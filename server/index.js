@@ -41,6 +41,31 @@ app.post('/api/users', (req, res) => {
   });
 });
 
+// Edit user information
+app.put('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, email, password } = req.body;
+  db.run(`UPDATE Users SET name = ?, email = ?, password = ? WHERE user_id = ?`, [name, email, password, id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'User updated successfully' });
+  });
+});
+
+// Delete a user
+app.delete('/api/users/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM Users WHERE user_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'User deleted successfully' });
+  });
+});
+
 // --- VENUES ENDPOINTS ---
 
 // Get all venues
