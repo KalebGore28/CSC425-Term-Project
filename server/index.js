@@ -93,6 +93,33 @@ app.post('/api/venues', (req, res) => {
     });
 });
 
+// Edit venue information
+app.put('/api/venues/:id', (req, res) => {
+  const { id } = req.params;
+  const { name, location, description, capacity, price, available_dates } = req.body;
+  db.run(`UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ?, available_dates = ? WHERE venue_id = ?`,
+    [name, location, description, capacity, price, available_dates, id],
+    function (err) {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Venue updated successfully' });
+    });
+});
+
+// Delete a venue
+app.delete('/api/venues/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM Venues WHERE venue_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Venue deleted successfully' });
+  });
+});
+
 // --- EVENTS ENDPOINTS ---
 
 // Get all events
@@ -118,6 +145,33 @@ app.post('/api/events', (req, res) => {
       }
       res.json({ event_id: this.lastID });
     });
+});
+
+// Edit event information
+app.put('/api/events/:id', (req, res) => {
+  const { id } = req.params;
+  const { venue_id, organizer_id, name, description, event_date } = req.body;
+  db.run(`UPDATE Events SET venue_id = ?, organizer_id = ?, name = ?, description = ?, event_date = ? WHERE event_id = ?`,
+    [venue_id, organizer_id, name, description, event_date, id],
+    function (err) {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Event updated successfully' });
+    });
+});
+
+// Delete an event
+app.delete('/api/events/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM Events WHERE event_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Event deleted successfully' });
+  });
 });
 
 // --- RSVPs ENDPOINTS ---
@@ -148,6 +202,31 @@ app.post('/api/rsvps', (req, res) => {
     });
 });
 
+// Update an RSVP
+app.put('/api/rsvps/:id', (req, res) => {
+  const { id } = req.params;
+  const { status, guest_count } = req.body;
+  db.run(`UPDATE RSVPs SET status = ?, guest_count = ? WHERE rsvp_id = ?`, [status, guest_count, id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'RSVP updated successfully' });
+  });
+});
+
+// Delete an RSVP
+app.delete('/api/rsvps/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM RSVPs WHERE rsvp_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'RSVP deleted successfully' });
+  });
+});
+
 // --- COMMUNITY POSTS ENDPOINTS ---
 
 // Get all posts for an event community
@@ -176,8 +255,88 @@ app.post('/api/posts', (req, res) => {
     });
 });
 
+// Update a community post
+app.put('/api/posts/:id', (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  db.run(`UPDATE Community_Posts SET content = ? WHERE post_id = ?`, [content, id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Post updated successfully' });
+  });
+});
+
+// Delete a community post
+app.delete('/api/posts/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM Community_Posts WHERE post_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Post deleted successfully' });
+  });
+});
+
+// --- Invitations ENDPOINTS ---
+
+// Get all invitations for an event
+app.get('/api/events/:event_id/invitations', (req, res) => {
+  const { event_id } = req.params;
+  db.all(`SELECT * FROM Invitations WHERE event_id = ?`, [event_id], (err, rows) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ data: rows });
+  });
+});
+
+// Add a new invitation
+app.post('/api/invitations', (req, res) => {
+  const { event_id, guest_id, email, status } = req.body;
+  db.run(`INSERT INTO Invitations (event_id, guest_id, email, status) VALUES (?, ?, ?, ?)`,
+    [event_id, guest_id, email, status],
+    function (err) {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      res.json({ invitation_id: this.lastID });
+    });
+});
+
+// Update an invitation
+app.put('/api/invitations/:id', (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  db.run(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Invitation updated successfully' });
+  });
+});
+
+// Delete an invitation
+app.delete('/api/invitations/:id', (req, res) => {
+  const { id } = req.params;
+  db.run(`DELETE FROM Invitations WHERE invitation_id = ?`, [id], function (err) {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    res.json({ message: 'Invitation deleted successfully' });
+  });
+});
+
+//
+
 // Start the server
 const PORT = 5001;
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
-});
+})
