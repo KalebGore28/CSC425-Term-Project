@@ -123,7 +123,7 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
     });
   });
 
-// --- Invitations ENDPOINTS ---
+// --- INVITATIONS ENDPOINTS ---
 
   // Get all invitations for an event
   app.get('/api/events/:event_id/invitations', (req, res) => {
