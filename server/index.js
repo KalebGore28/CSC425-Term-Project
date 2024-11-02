@@ -160,17 +160,17 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
   
             userId = this.lastID; // Newly created user_id
   
-            // Proceed to create invitation with the new user_id
+            // Proceed to create invitation and notification with the new user_id
             createInvitation(userId);
           }
         );
       } else {
-        // User exists, proceed to create invitation with existing user_id
+        // User exists, proceed to create invitation and notification with existing user_id
         createInvitation(userId);
       }
     });
   
-    // Helper function to create the invitation
+    // Helper function to create the invitation and then the notification
     function createInvitation(userId) {
       db.run(`INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
         [event_id, userId, status],
@@ -178,7 +178,28 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
           if (err) {
             return res.status(400).json({ error: err.message });
           }
-          res.json({ invitation_id: this.lastID });
+          
+          const invitationId = this.lastID;
+  
+          // Create a notification for the user
+          createNotification(userId, event_id, `You have been invited to event ID ${event_id}.`);
+          
+          // Respond with the invitation ID
+          res.json({ invitation_id: invitationId });
+        }
+      );
+    }
+  
+    // Helper function to create a notification
+    function createNotification(userId, eventId, message) {
+      db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
+        [userId, eventId, message],
+        (err) => {
+          if (err) {
+            console.error(`Error creating notification for user_id ${userId}:`, err.message);
+          } else {
+            console.log(`Notification created for user_id ${userId}`);
+          }
         }
       );
     }
@@ -382,9 +403,9 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
 
   // Add a new venue
   app.post('/api/venues', (req, res) => {
-    const { name, location, description, capacity, price, available_dates } = req.body;
-    db.run(`INSERT INTO Venues (name, location, description, capacity, price, available_dates) VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, location, description, capacity, price, available_dates],
+    const { owner_id, name, location, description, capacity, price, available_dates } = req.body;
+    db.run(`INSERT INTO Venues (owner_id, name, location, description, capacity, price, available_dates) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [owner_id, name, location, description, capacity, price, available_dates],
       function (err) {
         if (err) {
           res.status(400).json({ error: err.message });
@@ -421,11 +442,11 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
     });
   });
 
-// --- USER_VENUE_ROLES ENDPOINTS ---
+// --- USER_VENUE_Rentals ENDPOINTS ---
 
-  // Get all user_venue_roles
-  app.get('/api/user_venue_roles', (req, res) => {
-    db.all('SELECT * FROM User_Venue_Roles', [], (err, rows) => {
+  // Get all user_venue_rentals
+  app.get('/api/user_venue_rentals', (req, res) => {
+    db.all('SELECT * FROM User_Venue_Rentals', [], (err, rows) => {
       if (err) {
         res.status(400).json({ error: err.message });
         return;
@@ -434,44 +455,44 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
     });
   });
 
-  // Add a new user_venue_role
-  app.post('/api/user_venue_roles', (req, res) => {
-    const { user_id, venue_id, role, start_date, end_date } = req.body;
-    db.run(`INSERT INTO User_Venue_Roles (user_id, venue_id, role, start_date, end_date) VALUES (?, ?, ?, ?, ?)`,
-      [user_id, venue_id, role, start_date, end_date],
+  // Add a new user_venue_rentals
+  app.post('/api/user_venue_rentals', (req, res) => {
+    const { user_id, venue_id, start_date, end_date } = req.body;
+    db.run(`INSERT INTO User_Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+      [user_id, venue_id, start_date, end_date],
       function (err) {
         if (err) {
           res.status(400).json({ error: err.message });
           return;
         }
-        res.json({ user_venue_role_id: this.lastID });
+        res.json({ rental_id: this.lastID });
       });
   });
 
-  // Edit user_venue_role information
-  app.put('/api/user_venue_roles/:id', (req, res) => {
+  // Edit user_venue_rentals information
+  app.put('/api/user_venue_rentals/:id', (req, res) => {
     const { id } = req.params;
-    const { user_id, venue_id, role, start_date, end_date } = req.body;
-    db.run(`UPDATE User_Venue_Roles SET user_id = ?, venue_id = ?, role = ?, start_date = ?, end_date = ? WHERE user_venue_role_id = ?`,
-      [user_id, venue_id, role, start_date, end_date, id],
+    const { user_id, venue_id, start_date, end_date } = req.body;
+    db.run(`UPDATE User_Venue_Rentals SET user_id = ?, venue_id = ?, start_date = ?, end_date = ? WHERE rental_id = ?`,
+      [user_id, venue_id, start_date, end_date, id],
       function (err) {
         if (err) {
           res.status(400).json({ error: err.message });
           return;
         }
-        res.json({ message: 'User_Venue_Role updated successfully' });
+        res.json({ message: 'User_Venue_Rental updated successfully' });
       });
   });
 
-  // Delete a user_venue_role
-  app.delete('/api/user_venue_roles/:id', (req, res) => {
+  // Delete a user_venue_rentals
+  app.delete('/api/user_venue_rentals/:id', (req, res) => {
     const { id } = req.params;
-    db.run(`DELETE FROM User_Venue_Roles WHERE user_venue_role_id = ?`, [id], function (err) {
+    db.run(`DELETE FROM User_Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
       if (err) {
         res.status(400).json({ error: err.message });
         return;
       }
-      res.json({ message: 'User_Venue_Role deleted successfully' });
+      res.json({ message: 'User_Venue_Rental deleted successfully' });
     });
   });
 
