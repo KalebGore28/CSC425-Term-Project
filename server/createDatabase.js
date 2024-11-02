@@ -94,11 +94,12 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Invitations (
     invitation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
-    email TEXT NOT NULL,
+    user_id INTEGER NOT NULL,
     sent_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status TEXT CHECK(status IN ('Sent', 'Accepted', 'Declined')),
-    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE
-  )`, (err) => {
+    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+)`, (err) => {
     if (err) {
       console.error('Error creating Invitations table:', err.message);
     } else {

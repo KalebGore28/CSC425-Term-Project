@@ -139,16 +139,49 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
 
   // Add a new invitation
   app.post('/api/invitations', (req, res) => {
-    const { event_id, guest_id, email, status } = req.body;
-    db.run(`INSERT INTO Invitations (event_id, email, status) VALUES (?, ?, ?, ?)`,
-      [event_id, guest_id, email, status],
-      function (err) {
-        if (err) {
-          res.status(400).json({ error: err.message });
-          return;
+    const { event_id, email, status } = req.body;
+  
+    // Step 1: Check if user exists
+    db.get(`SELECT user_id FROM Users WHERE email = ?`, [email], (err, user) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+  
+      let userId = user ? user.user_id : null;
+  
+      // Step 2: If user does not exist, create a new one
+      if (!userId) {
+        db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+          ["Placeholder Name", email, "PlaceholderPassword"],
+          function (err) {
+            if (err) {
+              return res.status(500).json({ error: err.message });
+            }
+  
+            userId = this.lastID; // Newly created user_id
+  
+            // Proceed to create invitation with the new user_id
+            createInvitation(userId);
+          }
+        );
+      } else {
+        // User exists, proceed to create invitation with existing user_id
+        createInvitation(userId);
+      }
+    });
+  
+    // Helper function to create the invitation
+    function createInvitation(userId) {
+      db.run(`INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
+        [event_id, userId, status],
+        function (err) {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+          res.json({ invitation_id: this.lastID });
         }
-        res.json({ invitation_id: this.lastID });
-      });
+      );
+    }
   });
 
   // Update an invitation
