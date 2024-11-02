@@ -137,72 +137,89 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
     });
   });
 
-  // Add a new invitation
   app.post('/api/invitations', (req, res) => {
     const { event_id, email, status } = req.body;
   
-    // Step 1: Check if user exists
-    db.get(`SELECT user_id FROM Users WHERE email = ?`, [email], (err, user) => {
+    // Step 1: Retrieve the venue's capacity and current accepted invitations count
+    db.get(`SELECT V.capacity, COUNT(I.invitation_id) AS accepted_count
+            FROM Events AS E
+            JOIN Venues AS V ON E.venue_id = V.venue_id
+            LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
+            WHERE E.event_id = ?`, [event_id], (err, eventInfo) => {
       if (err) {
-        return res.status(500).json({ error: err.message });
+        return res.status(500).json({ error: "Error retrieving event and venue details" });
       }
   
-      let userId = user ? user.user_id : null;
+      const { capacity, accepted_count } = eventInfo;
+      
+      // Check if the venue has reached its capacity
+      if (status === 'Accepted' && accepted_count >= capacity) {
+        return res.status(400).json({ error: "The venue has reached its maximum capacity. Cannot accept new invitation." });
+      }
   
-      // Step 2: If user does not exist, create a new one
-      if (!userId) {
-        db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-          ["Placeholder Name", email, "PlaceholderPassword"],
+      // Step 2: Check if the user already exists
+      db.get(`SELECT user_id FROM Users WHERE email = ?`, [email], (err, user) => {
+        if (err) {
+          return res.status(500).json({ error: err.message });
+        }
+  
+        let userId = user ? user.user_id : null;
+  
+        // Step 3: If the user does not exist, create a new one
+        if (!userId) {
+          db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+            ["Placeholder Name", email, "PlaceholderPassword"],
+            function (err) {
+              if (err) {
+                return res.status(500).json({ error: err.message });
+              }
+  
+              userId = this.lastID; // Newly created user_id
+  
+              // Proceed to create the invitation and notification with the new user_id
+              createInvitation(userId);
+            }
+          );
+        } else {
+          // User exists, proceed to create the invitation and notification with the existing user_id
+          createInvitation(userId);
+        }
+      });
+  
+      // Helper function to create the invitation and then the notification
+      function createInvitation(userId) {
+        db.run(`INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
+          [event_id, userId, status],
           function (err) {
             if (err) {
-              return res.status(500).json({ error: err.message });
+              return res.status(400).json({ error: err.message });
             }
+            
+            const invitationId = this.lastID;
   
-            userId = this.lastID; // Newly created user_id
-  
-            // Proceed to create invitation and notification with the new user_id
-            createInvitation(userId);
+            // Create a notification for the user
+            createNotification(userId, event_id, `You have been invited to event ID ${event_id}.`);
+            
+            // Respond with the invitation ID
+            res.json({ invitation_id: invitationId });
           }
         );
-      } else {
-        // User exists, proceed to create invitation and notification with existing user_id
-        createInvitation(userId);
+      }
+  
+      // Helper function to create a notification
+      function createNotification(userId, eventId, message) {
+        db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
+          [userId, eventId, message],
+          (err) => {
+            if (err) {
+              console.error(`Error creating notification for user_id ${userId}:`, err.message);
+            } else {
+              console.log(`Notification created for user_id ${userId}`);
+            }
+          }
+        );
       }
     });
-  
-    // Helper function to create the invitation and then the notification
-    function createInvitation(userId) {
-      db.run(`INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
-        [event_id, userId, status],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-          
-          const invitationId = this.lastID;
-  
-          // Create a notification for the user
-          createNotification(userId, event_id, `You have been invited to event ID ${event_id}.`);
-          
-          // Respond with the invitation ID
-          res.json({ invitation_id: invitationId });
-        }
-      );
-    }
-  
-    // Helper function to create a notification
-    function createNotification(userId, eventId, message) {
-      db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
-        [userId, eventId, message],
-        (err) => {
-          if (err) {
-            console.error(`Error creating notification for user_id ${userId}:`, err.message);
-          } else {
-            console.log(`Notification created for user_id ${userId}`);
-          }
-        }
-      );
-    }
   });
 
   // Update an invitation
@@ -403,9 +420,9 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
 
   // Add a new venue
   app.post('/api/venues', (req, res) => {
-    const { owner_id, name, location, description, capacity, price, available_dates } = req.body;
-    db.run(`INSERT INTO Venues (owner_id, name, location, description, capacity, price, available_dates) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [owner_id, name, location, description, capacity, price, available_dates],
+    const { owner_id, name, location, description, capacity, price } = req.body;
+    db.run(`INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
+      [owner_id, name, location, description, capacity, price],
       function (err) {
         if (err) {
           res.status(400).json({ error: err.message });
@@ -419,8 +436,8 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
   app.put('/api/venues/:id', (req, res) => {
     const { id } = req.params;
     const { name, location, description, capacity, price, available_dates } = req.body;
-    db.run(`UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ?, available_dates = ? WHERE venue_id = ?`,
-      [name, location, description, capacity, price, available_dates, id],
+    db.run(`UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ? WHERE venue_id = ?`,
+      [name, location, description, capacity, price, id],
       function (err) {
         if (err) {
           res.status(400).json({ error: err.message });
@@ -456,32 +473,130 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
   });
 
   // Add a new user_venue_rentals
+  const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');  // Using date-fns for date handling
+
   app.post('/api/user_venue_rentals', (req, res) => {
     const { user_id, venue_id, start_date, end_date } = req.body;
-    db.run(`INSERT INTO User_Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
-      [user_id, venue_id, start_date, end_date],
-      function (err) {
+  
+    // Step 1: Parse dates and generate a list of dates for the rental range
+    const start = parseISO(start_date);
+    const end = parseISO(end_date);
+    const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
+  
+    // Step 2: Validate that each date in the range is available
+    const placeholders = rentalDates.map(() => '?').join(',');
+    const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
+  
+    db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: "Error retrieving available dates" });
+      }
+  
+      const availableDates = rows.map(row => row.available_date);
+      const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
+  
+      if (unavailableDates.length > 0) {
+        return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
+      }
+  
+      // Step 3: Check for overlapping rentals in the date range
+      db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
         if (err) {
-          res.status(400).json({ error: err.message });
-          return;
+          return res.status(500).json({ error: "Error checking for existing rentals" });
         }
-        res.json({ rental_id: this.lastID });
+  
+        const hasOverlap = existingRentals.some(rental => {
+          const rentalStart = parseISO(rental.start_date);
+          const rentalEnd = parseISO(rental.end_date);
+  
+          // Check if the new rental range overlaps with the existing rental range
+          return (
+            (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||   // New rental overlaps with an existing rental
+            isEqual(start, rentalStart) || isEqual(end, rentalEnd) ||      // New rental starts or ends on the same date
+            (isEqual(start, rentalEnd) || isEqual(end, rentalStart))       // Edge case: new rental exactly overlaps end/start
+          );
+        });
+  
+        if (hasOverlap) {
+          return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
+        }
+  
+        // Step 4: Proceed to add the rental if no overlap is found
+        db.run(
+          `INSERT INTO User_Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+          [user_id, venue_id, start_date, end_date],
+          function (err) {
+            if (err) {
+              return res.status(500).json({ error: "Error creating rental" });
+            }
+            res.json({ rental_id: this.lastID });
+          }
+        );
       });
+    });
   });
 
   // Edit user_venue_rentals information
   app.put('/api/user_venue_rentals/:id', (req, res) => {
     const { id } = req.params;
     const { user_id, venue_id, start_date, end_date } = req.body;
-    db.run(`UPDATE User_Venue_Rentals SET user_id = ?, venue_id = ?, start_date = ?, end_date = ? WHERE rental_id = ?`,
-      [user_id, venue_id, start_date, end_date, id],
-      function (err) {
+
+    // Step 1: Generate list of dates between start_date and end_date
+    const start = parseISO(start_date);
+    const end = parseISO(end_date);
+    const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
+
+    // Step 2: Validate that each date in the range is available
+    const placeholders = rentalDates.map(() => '?').join(',');
+    const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
+
+    db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: "Error retrieving available dates" });
+      }
+
+      const availableDates = rows.map(row => row.available_date);
+      const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
+
+      if (unavailableDates.length > 0) {
+        return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
+      }
+
+      // Step 3: Check for overlapping rentals in the date range, excluding the current rental
+      db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ? AND rental_id != ?`, [venue_id, id], (err, existingRentals) => {
         if (err) {
-          res.status(400).json({ error: err.message });
-          return;
+          return res.status(500).json({ error: "Error checking for existing rentals" });
         }
-        res.json({ message: 'User_Venue_Rental updated successfully' });
+
+        const hasOverlap = existingRentals.some(rental => {
+          const rentalStart = parseISO(rental.start_date);
+          const rentalEnd = parseISO(rental.end_date);
+
+          // Check if the new rental range overlaps with the existing rental range
+          return (
+            (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||   // New rental overlaps with an existing rental
+            isEqual(start, rentalStart) || isEqual(end, rentalEnd) ||      // New rental starts or ends on the same date
+            (isEqual(start, rentalEnd) || isEqual(end, rentalStart))       // Edge case: new rental exactly overlaps end/start
+          );
+        });
+
+        if (hasOverlap) {
+          return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
+        }
+
+        // Step 4: Proceed to update the rental if no overlap is found
+        db.run(
+          `UPDATE User_Venue_Rentals SET user_id = ?, venue_id = ?, start_date = ?, end_date = ? WHERE rental_id = ?`,
+          [user_id, venue_id, start_date, end_date, id],
+          function (err) {
+            if (err) {
+              return res.status(500).json({ error: "Error updating rental" });
+            }
+            res.json({ message: 'User_Venue_Rental updated successfully' });
+          }
+        );
       });
+    });
   });
 
   // Delete a user_venue_rentals

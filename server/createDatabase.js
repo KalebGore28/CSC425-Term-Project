@@ -17,16 +17,18 @@ db.serialize(() => {
     }
   });
 
-  // 2. Create Venues Table
+  // 2. Create Venues Table with owner_id
   db.run(`CREATE TABLE IF NOT EXISTS Venues (
     venue_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_id INTEGER NOT NULL,  -- New owner_id column
     name TEXT NOT NULL,
     location TEXT NOT NULL,
     description TEXT,
     capacity INTEGER,
     price REAL,
     available_dates TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES Users(user_id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {
       console.error('Error creating Venues table:', err.message);
@@ -35,21 +37,20 @@ db.serialize(() => {
     }
   });
 
-  // 3. Create User_Venue_Roles Table
-  db.run(`CREATE TABLE IF NOT EXISTS User_Venue_Roles (
-    user_venue_role_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  // 3. Create User_Venue_Rentals Table (formerly User_Venue_Roles) for tracking rentals only
+  db.run(`CREATE TABLE IF NOT EXISTS User_Venue_Rentals (
+    rental_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     venue_id INTEGER NOT NULL,
-    role TEXT CHECK(role IN ('Owner', 'Renter')) NOT NULL,
-    start_date DATE,
-    end_date DATE,
+    start_date TEXT,  -- Store dates in TEXT format
+    end_date TEXT,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {
-      console.error('Error creating User_Venue_Roles table:', err.message);
+      console.error('Error creating User_Venue_Rentals table:', err.message);
     } else {
-      console.log('User_Venue_Roles table created successfully');
+      console.log('User_Venue_Rentals table created successfully');
     }
   });
 
@@ -90,7 +91,7 @@ db.serialize(() => {
     }
   });
 
-  // 6. Create Invitations Table
+  // 6. Create Invitations Table with user_id
   db.run(`CREATE TABLE IF NOT EXISTS Invitations (
     invitation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
@@ -99,7 +100,7 @@ db.serialize(() => {
     status TEXT CHECK(status IN ('Sent', 'Accepted', 'Declined')),
     FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
-)`, (err) => {
+  )`, (err) => {
     if (err) {
       console.error('Error creating Invitations table:', err.message);
     } else {
