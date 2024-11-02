@@ -1,0 +1,1814 @@
+{
+	"info": {
+		"_postman_id": "2ae16552-5ba0-43d1-b9f2-d9053724c710",
+		"name": "CSC425-Term-CRUD-Operations",
+		"description": "# 🚀 Get started here\n\nThis template guides you through CRUD operations (GET, POST, PUT, DELETE), variables, and tests.\n\n## 🔖 **How to use this template**\n\n#### **Step 1: Send requests**\n\nRESTful APIs allow you to perform CRUD operations using the POST, GET, PUT, and DELETE HTTP methods.\n\nThis collection contains each of these [request](https://learning.postman.com/docs/sending-requests/requests/) types. Open each request and click \"Send\" to see what happens.\n\n#### **Step 2: View responses**\n\nObserve the response tab for status code (200 OK), response time, and size.\n\n#### **Step 3: Send new Body data**\n\nUpdate or add new data in \"Body\" in the POST request. Typically, Body data is also used in PUT request.\n\n```\n{\n    \"name\": \"Add your name in the body\"\n}\n\n ```\n\n#### **Step 4: Update the variable**\n\nVariables enable you to store and reuse values in Postman. We have created a [variable](https://learning.postman.com/docs/sending-requests/variables/) called `base_url` with the sample request [https://postman-api-learner.glitch.me](https://postman-api-learner.glitch.me). Replace it with your API endpoint to customize this collection.\n\n#### **Step 5: Add tests in the \"Scripts\" tab**\n\nAdding tests to your requests can help you confirm that your API is working as expected. You can write test scripts in JavaScript and view the output in the \"Test Results\" tab.\n\n<img src=\"https://content.pstmn.io/fa30ea0a-373d-4545-a668-e7b283cca343/aW1hZ2UucG5n\" alt=\"\" height=\"1530\" width=\"2162\">\n\n## 💪 Pro tips\n\n- Use folders to group related requests and organize the collection.\n    \n- Add more [scripts](https://learning.postman.com/docs/writing-scripts/intro-to-scripts/) to verify if the API works as expected and execute workflows.\n    \n\n## 💡Related templates\n\n[API testing basics](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9a37a28-055b-49cd-8c7e-97494a21eb54&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[API documentation](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=e9c28f47-1253-44af-a2f3-20dce4da1f18&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)  \n[Authorization methods](https://go.postman.co/redirect/workspace?type=personal&collectionTemplateId=31a9a6ed-4cdf-4ced-984c-d12c9aec1c27&sourceTemplateId=ddb19591-3097-41cf-82af-c84273e56719)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39367937"
+	},
+	"item": [
+		{
+			"name": "Get all posts from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(post) {  // Change 'posts' to 'data'",
+							"        pm.expect(post).to.have.property('post_id').that.is.a('number');",
+							"        pm.expect(post).to.have.property('event_id').that.is.a('number');",
+							"        pm.expect(post).to.have.property('user_id').that.is.a('number');",
+							"        pm.expect(post).to.have.property('content').that.is.a('string');",
+							"        pm.expect(post).to.have.property('created_at').that.is.a('string');",
+							"    });",
+							"});",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/events/1/posts",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events",
+						"1",
+						"posts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new post in event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains post_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('post_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if post_id is the expected value or within a valid range",
+							"    pm.expect(responseData.post_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store post_id as a collection variable",
+							"pm.collectionVariables.set(\"post_id\", responseData.post_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"event_id\": 1,\n    \"user_id\": 1,\n    \"content\": \"This is a test post\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/posts",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"posts"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update post in event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"event_id\": 1,\n    \"user_id\": 1,\n    \"content\": \"This is an updated test post\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/posts/{{post_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"posts",
+						"{{post_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete post from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/posts/{{post_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"posts",
+						"{{post_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all events",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(events) {",
+							"        pm.expect(events).to.have.property('event_id').that.is.a('number');",
+							"        pm.expect(events).to.have.property('venue_id').that.is.a('number');",
+							"        pm.expect(events).to.have.property('organizer_id').that.is.a('number');",
+							"        pm.expect(events).to.have.property('name').that.is.a('string');",
+							"        pm.expect(events).to.have.property('description').that.is.a('string');",
+							"        pm.expect(events).to.have.property('event_date').that.is.a('string');",
+							"        pm.expect(events).to.have.property('created_at').that.is.a('string');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/events",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new event",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains event_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('event_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if event_id is the expected value or within a valid range",
+							"    pm.expect(responseData.event_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store event_id as a collection variable",
+							"pm.collectionVariables.set(\"event_id\", responseData.event_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"venue_id\": 1,\n    \"organizer_id\": 1,\n    \"name\": \"Test Event\",\n    \"description\": \"This is a test event\",\n    \"event_date\": \"2024-11-20\"\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/events",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update event",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"venue_id\": 1,\n    \"organizer_id\": 1,\n    \"name\": \"Updated Event\",\n    \"description\": \"This is an updated test event\",\n    \"event_date\": \"2024-11-20\"\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/events/{{event_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events",
+						"{{event_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Event",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/events/{{event_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events",
+						"{{event_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all invitations from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(invitation) {",
+							"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
+							"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
+							"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
+							"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
+							"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/events/1/invitations",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"events",
+						"1",
+						"invitations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new invitation from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains invitation_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('invitation_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if invitation_id is the expected value or within a valid range",
+							"    pm.expect(responseData.invitation_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store invitation_id as a collection variable",
+							"pm.collectionVariables.set(\"invitation_id\", responseData.invitation_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"event_id\": 1,\n    \"email\": \"jerry@example.com\",\n    \"status\": \"Sent\"\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/invitations",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"invitations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update invitation from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"status\": \"Accepted\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"invitations",
+						"{{invitation_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete invitation from event 1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"invitations",
+						"{{invitation_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Clean up notifications for user 7",
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/notifications/{{cleanup_notification_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"notifications",
+						"{{cleanup_notification_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all notifications from user 7",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(notifications) {",
+							"        pm.expect(notifications).to.have.property('notification_id').that.is.a('number');",
+							"        pm.expect(notifications).to.have.property('user_id').that.is.a('number');",
+							"        pm.expect(notifications).to.have.property('event_id').that.is.a('number');",
+							"        pm.expect(notifications).to.have.property('status').that.is.a('string');",
+							"        pm.expect(notifications).to.have.property('created_at').that.is.a('string');",
+							"    });",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Check if there are multiple notifications",
+							"if (responseData.data && responseData.data.length > 1) {",
+							"    // Get the notification_id of the second notification (the extra one)",
+							"    const cleanupNotificationId = responseData.data[1].notification_id;",
+							"",
+							"    // Store it as a collection variable",
+							"    pm.collectionVariables.set(\"cleanup_notification_id\", cleanupNotificationId);",
+							"",
+							"    console.log(\"Cleanup notification ID stored:\", cleanupNotificationId);",
+							"} else {",
+							"    console.log(\"No extra notification to assign to cleanup_notification_id.\");",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/users/7/notifications",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"7",
+						"notifications"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new notification for user 7",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains notification_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('notification_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if notification_id is the expected value or within a valid range",
+							"    pm.expect(responseData.notification_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store notification_id as a collection variable",
+							"pm.collectionVariables.set(\"notification_id\", responseData.notification_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\": 7,\n    \"event_id\": 1,\n    \"message\": \"Test notification\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/notifications",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"notifications"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update notification for user 7",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"status\": \"Read\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/notifications/{{notification_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"notifications",
+						"{{notification_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete notification for user 7",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/notifications/{{notification_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"notifications",
+						"{{notification_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all users",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(notifications) {",
+							"        pm.expect(notifications).to.have.property('user_id').that.is.a('number');",
+							"        pm.expect(notifications).to.have.property('name').that.is.a('string');",
+							"        pm.expect(notifications).to.have.property('email').that.is.a('string');",
+							"        pm.expect(notifications).to.have.property('password').that.is.a('string');",
+							"        pm.expect(notifications).to.have.property('created_at').that.is.a('string');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/users",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains user_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('user_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if user_id is the expected value or within a valid range",
+							"    pm.expect(responseData.user_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store user_id as a collection variable",
+							"pm.collectionVariables.set(\"user_id\", responseData.user_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update new user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Harry\",\n    \"email\": \"harry@example.com\",\n    \"password\": \"securepass\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/users/{{user_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{user_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete new user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/users/{{user_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"users",
+						"{{user_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all venues",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(venues) {",
+							"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('name').that.is.a('string');",
+							"        pm.expect(venues).to.have.property('location').that.is.a('string');",
+							"        pm.expect(venues).to.have.property('description').that.is.a('string');",
+							"        pm.expect(venues).to.have.property('capacity').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('price').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('created_at').that.is.a('string');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/venues",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"venues"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new venue",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains venue_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('venue_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if venue_id is the expected value or within a valid range",
+							"    pm.expect(responseData.venue_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store venue_id as a collection variable",
+							"pm.collectionVariables.set(\"venue_id\", responseData.venue_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"owner_id\": 7,\n    \"name\": \"New Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/venues",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"venues"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update new venue",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\": \"Updated Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/venues/{{venue_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"venues",
+						"{{venue_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete new venue",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/venues/{{venue_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"venues",
+						"{{venue_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get all user rentals",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+							"    responseData.data.forEach(function(venues) {",
+							"        pm.expect(venues).to.have.property('rental_id').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('user_id').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
+							"        pm.expect(venues).to.have.property('start_date').that.is.a('string');",
+							"        pm.expect(venues).to.have.property('end_date').that.is.a('string');",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/user_venue_rentals",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"user_venue_rentals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create new user rental",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains rental_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('rental_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if rental_id is the expected value or within a valid range",
+							"    pm.expect(responseData.rental_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store rental_id as a collection variable",
+							"pm.collectionVariables.set(\"rental_id\", responseData.rental_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-02-01\",\n    \"end_date\" : \"2025-02-01\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/user_venue_rentals",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"user_venue_rentals"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update new user rental",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\" : \"2025-02-01\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/user_venue_rentals/{{rental_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"user_venue_rentals",
+						"{{rental_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete new user rental",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/user_venue_rentals/{{rental_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"user_venue_rentals",
+						"{{rental_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get availability dates",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/available_dates",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"available_dates"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Add new available date",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"  pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"  pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"pm.test(\"Validate the schema of the response body\", function () {",
+							"    const responseData = pm.response.json();",
+							"    ",
+							"    // Check if the response is an object",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    ",
+							"    // Check if response contains availability_id and that it is a number",
+							"    pm.expect(responseData).to.have.property('availability_id').that.is.a('number');",
+							"    ",
+							"    // Optional: Check if availability_id is the expected value or within a valid range",
+							"    pm.expect(responseData.availability_id).to.be.greaterThan(0);",
+							"});",
+							"",
+							"const responseData = pm.response.json();",
+							"",
+							"// Store availability_id as a collection variable",
+							"pm.collectionVariables.set(\"availability_id\", responseData.availability_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"venue_id\": 1,\n    \"available_date\": \"2025-02-25\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/available_dates",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"available_dates"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Update new availability date",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of PUT method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"venue_id\": 1,\n    \"available_date\": \"2025-02-26\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"available_dates",
+						"{{availability_id}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete new availability date",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Validate HTTP status code is 200",
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"// Validate response time is less than 200ms",
+							"pm.test(\"Response time is less than 200ms\", function () {",
+							"    pm.expect(pm.response.responseTime).to.be.below(200);",
+							"});",
+							"",
+							"// Validate the structure and types of the response body",
+							"pm.test(\"Validate the response body of DEL method\", function () {",
+							"    const responseData = pm.response.json();",
+							"",
+							"    pm.expect(responseData).to.be.an('object');",
+							"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"available_dates",
+						"{{availability_id}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:5001"
+		},
+		{
+			"key": "post_id",
+			"value": ""
+		},
+		{
+			"key": "event_id",
+			"value": ""
+		},
+		{
+			"key": "invitation_id",
+			"value": ""
+		},
+		{
+			"key": "notification_id",
+			"value": ""
+		},
+		{
+			"key": "user_id",
+			"value": ""
+		},
+		{
+			"key": "cleanup_notification_id",
+			"value": ""
+		},
+		{
+			"key": "venue_id",
+			"value": ""
+		},
+		{
+			"key": "rental_id",
+			"value": ""
+		},
+		{
+			"key": "availability_id",
+			"value": ""
+		}
+	]
+}
