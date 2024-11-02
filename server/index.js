@@ -611,6 +611,60 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
     });
   });
 
+// --- AVAILABLE_DATES ENDPOINTS ---
+
+  // Get all available_dates
+  app.get('/api/available_dates', (req, res) => {
+    db.all('SELECT * FROM Available_Dates', [], (err, rows) => {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      res.json({ data: rows });
+    });
+  });
+
+  // Add a new available_dates
+  app.post('/api/available_dates', (req, res) => {
+    const { venue_id, available_date } = req.body;
+    db.run(`INSERT INTO Available_Dates (venue_id, available_date) VALUES (?, ?)`,
+      [venue_id, available_date],
+      function (err) {
+        if (err) {
+          res.status(400).json({ error: err.message });
+          return;
+        }
+        res.json({ availability_id: this.lastID });
+      });
+  });
+
+  // Edit available_dates information
+  app.put('/api/available_dates/:id', (req, res) => {
+    const { id } = req.params;
+    const { venue_id, available_date } = req.body;
+    db.run(`UPDATE Available_Dates SET venue_id = ?, available_date = ? WHERE availability_id = ?`,
+      [venue_id, available_date, id],
+      function (err) {
+        if (err) {
+          res.status(400).json({ error: err.message });
+          return;
+        }
+        res.json({ message: 'Available_Date updated successfully' });
+      });
+  });
+
+  // Delete a available_dates
+  app.delete('/api/available_dates/:id', (req, res) => {
+    const { id } = req.params;
+    db.run(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id], function (err) {
+      if (err) {
+        res.status(400).json({ error: err.message });
+        return;
+      }
+      res.json({ message: 'Available_Date deleted successfully' });
+    });
+  });
+
 // --- END OF ENDPOINTS ---
 
 
