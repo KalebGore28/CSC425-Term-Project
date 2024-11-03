@@ -287,8 +287,7 @@ app.get('/api/users/:user_id/notifications', (req, res) => {
   const { user_id } = req.params;
   db.all(`SELECT * FROM Notifications WHERE user_id = ?`, [user_id], (err, rows) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ data: rows });
   });
@@ -301,8 +300,7 @@ app.post('/api/notifications', (req, res) => {
     [user_id, event_id, message],
     function (err) {
       if (err) {
-        res.status(400).json({ error: err.message });
-        return;
+        return res.status(400).json({ error: err.message });
       }
       res.json({ notification_id: this.lastID });
     });
@@ -314,9 +312,15 @@ app.put('/api/notifications/:id', (req, res) => {
   const { status } = req.body;
   db.run(`UPDATE Notifications SET status = ? WHERE notification_id = ?`, [status, id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
+
+    // Check if any row was updated
+    if (this.changes === 0) {
+      // No rows were affected, meaning the notification with the given ID doesn't exist or no changes were made
+      return res.status(400).json({ error: "Notification not found or no changes made" });
+    }
+
     res.json({ message: 'Notification updated successfully' });
   });
 });
@@ -326,66 +330,17 @@ app.delete('/api/notifications/:id', (req, res) => {
   const { id } = req.params;
   db.run(`DELETE FROM Notifications WHERE notification_id = ?`, [id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Check if any row was deleted
+    if (this.changes === 0) {
+      // No rows were affected, meaning the notification with the given ID doesn't exist
+      return res.status(404).json({ error: "Notification not found" });
     }
     res.json({ message: 'Notification deleted successfully' });
   });
 });
-
-// --- RSVPs ENDPOINTS ---
-
-// Get all RSVPs for an event
-app.get('/api/events/:event_id/rsvps', (req, res) => {
-  const { event_id } = req.params;
-  db.all(`SELECT * FROM RSVPs WHERE event_id = ?`, [event_id], (err, rows) => {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json({ data: rows });
-  });
-});
-
-// Add a new RSVP
-app.post('/api/rsvps', (req, res) => {
-  const { event_id, guest_id, status, guest_count } = req.body;
-  db.run(`INSERT INTO RSVPs (event_id, guest_id, status, guest_count) VALUES (?, ?, ?, ?)`,
-    [event_id, guest_id, status, guest_count],
-    function (err) {
-      if (err) {
-        res.status(400).json({ error: err.message });
-        return;
-      }
-      res.json({ rsvp_id: this.lastID });
-    });
-});
-
-// Update an RSVP
-app.put('/api/rsvps/:id', (req, res) => {
-  const { id } = req.params;
-  const { status, guest_count } = req.body;
-  db.run(`UPDATE RSVPs SET status = ?, guest_count = ? WHERE rsvp_id = ?`, [status, guest_count, id], function (err) {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json({ message: 'RSVP updated successfully' });
-  });
-});
-
-// Delete an RSVP
-app.delete('/api/rsvps/:id', (req, res) => {
-  const { id } = req.params;
-  db.run(`DELETE FROM RSVPs WHERE rsvp_id = ?`, [id], function (err) {
-    if (err) {
-      res.status(400).json({ error: err.message });
-      return;
-    }
-    res.json({ message: 'RSVP deleted successfully' });
-  });
-});
-
 
 // --- USERS ENDPOINTS ---
 
@@ -393,8 +348,7 @@ app.delete('/api/rsvps/:id', (req, res) => {
 app.get('/api/users', (req, res) => {
   db.all('SELECT * FROM Users', [], (err, rows) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ data: rows });
   });
@@ -405,8 +359,7 @@ app.post('/api/users', (req, res) => {
   const { name, email, password } = req.body;
   db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`, [name, email, password], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ user_id: this.lastID });
   });
@@ -418,9 +371,15 @@ app.put('/api/users/:id', (req, res) => {
   const { name, email, password } = req.body;
   db.run(`UPDATE Users SET name = ?, email = ?, password = ? WHERE user_id = ?`, [name, email, password, id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
+
+    // Check if any row was updated
+    if (this.changes === 0) {
+      // No rows were affected, meaning the user with the given ID doesn't exist or no changes were made
+      return res.status(400).json({ error: "User not found or no changes made" });
+    }
+
     res.json({ message: 'User updated successfully' });
   });
 });
@@ -430,9 +389,15 @@ app.delete('/api/users/:id', (req, res) => {
   const { id } = req.params;
   db.run(`DELETE FROM Users WHERE user_id = ?`, [id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
+
+    // Check if any row was deleted
+    if (this.changes === 0) {
+      // No rows were affected, meaning the user with the given ID doesn't exist
+      return res.status(404).json({ error: "User not found" });
+    }
+
     res.json({ message: 'User deleted successfully' });
   });
 });
@@ -443,8 +408,7 @@ app.delete('/api/users/:id', (req, res) => {
 app.get('/api/venues', (req, res) => {
   db.all('SELECT * FROM Venues', [], (err, rows) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ data: rows });
   });
@@ -457,8 +421,7 @@ app.post('/api/venues', (req, res) => {
     [owner_id, name, location, description, capacity, price],
     function (err) {
       if (err) {
-        res.status(400).json({ error: err.message });
-        return;
+        return res.status(400).json({ error: err.message });
       }
       res.json({ venue_id: this.lastID });
     });
@@ -472,9 +435,15 @@ app.put('/api/venues/:id', (req, res) => {
     [name, location, description, capacity, price, id],
     function (err) {
       if (err) {
-        res.status(400).json({ error: err.message });
-        return;
+        return res.status(400).json({ error: err.message });
       }
+
+      // Check if any row was updated
+      if (this.changes === 0) {
+        // No rows were affected, meaning the venue with the given ID doesn't exist or no changes were made
+        return res.status(400).json({ error: "Venue not found or no changes made" });
+      }
+
       res.json({ message: 'Venue updated successfully' });
     });
 });
@@ -484,8 +453,13 @@ app.delete('/api/venues/:id', (req, res) => {
   const { id } = req.params;
   db.run(`DELETE FROM Venues WHERE venue_id = ?`, [id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
+    }
+
+    // Check if any row was deleted
+    if (this.changes === 0) {
+      // No rows were affected, meaning the venue with the given ID doesn't exist
+      return res.status(404).json({ error: "Venue not found" });
     }
     res.json({ message: 'Venue deleted successfully' });
   });
@@ -497,8 +471,7 @@ app.delete('/api/venues/:id', (req, res) => {
 app.get('/api/user_venue_rentals', (req, res) => {
   db.all('SELECT * FROM User_Venue_Rentals', [], (err, rows) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ data: rows });
   });
@@ -521,7 +494,7 @@ app.post('/api/user_venue_rentals', (req, res) => {
 
   db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: "Error retrieving available dates" });
+      return res.status(400).json({ error: "Error retrieving available dates" });
     }
 
     const availableDates = rows.map(row => row.available_date);
@@ -534,7 +507,7 @@ app.post('/api/user_venue_rentals', (req, res) => {
     // Step 3: Check for overlapping rentals in the date range
     db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
       if (err) {
-        return res.status(500).json({ error: "Error checking for existing rentals" });
+        return res.status(400).json({ error: "Error checking for existing rentals" });
       }
 
       const hasOverlap = existingRentals.some(rental => {
@@ -559,7 +532,7 @@ app.post('/api/user_venue_rentals', (req, res) => {
         [user_id, venue_id, start_date, end_date],
         function (err) {
           if (err) {
-            return res.status(500).json({ error: "Error creating rental" });
+            return res.status(400).json({ error: err.message });
           }
           res.json({ rental_id: this.lastID });
         }
@@ -584,7 +557,7 @@ app.put('/api/user_venue_rentals/:id', (req, res) => {
 
   db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
     if (err) {
-      return res.status(500).json({ error: "Error retrieving available dates" });
+      return res.status(400).json({ error: "Error retrieving available dates" });
     }
 
     const availableDates = rows.map(row => row.available_date);
@@ -597,7 +570,7 @@ app.put('/api/user_venue_rentals/:id', (req, res) => {
     // Step 3: Check for overlapping rentals in the date range, excluding the current rental
     db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ? AND rental_id != ?`, [venue_id, id], (err, existingRentals) => {
       if (err) {
-        return res.status(500).json({ error: "Error checking for existing rentals" });
+        return res.status(400).json({ error: "Error checking for existing rentals" });
       }
 
       const hasOverlap = existingRentals.some(rental => {
@@ -622,8 +595,15 @@ app.put('/api/user_venue_rentals/:id', (req, res) => {
         [user_id, venue_id, start_date, end_date, id],
         function (err) {
           if (err) {
-            return res.status(500).json({ error: "Error updating rental" });
+            return res.status(400).json({ error: err.message });
           }
+
+          // Check if any row was updated
+          if (this.changes === 0) {
+            // No rows were affected, meaning the rental with the given ID doesn't exist or no changes were made
+            return res.status(400).json({ error: "Rental not found or no changes made" });
+          }
+
           res.json({ message: 'User_Venue_Rental updated successfully' });
         }
       );
@@ -636,9 +616,15 @@ app.delete('/api/user_venue_rentals/:id', (req, res) => {
   const { id } = req.params;
   db.run(`DELETE FROM User_Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
+
+    // Check if any row was deleted
+    if (this.changes === 0) {
+      // No rows were affected, meaning the rental with the given ID doesn't exist
+      return res.status(404).json({ error: "Rental not found" });
+    }
+
     res.json({ message: 'User_Venue_Rental deleted successfully' });
   });
 });
@@ -649,8 +635,7 @@ app.delete('/api/user_venue_rentals/:id', (req, res) => {
 app.get('/api/available_dates', (req, res) => {
   db.all('SELECT * FROM Available_Dates', [], (err, rows) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
     res.json({ data: rows });
   });
@@ -663,8 +648,7 @@ app.post('/api/available_dates', (req, res) => {
     [venue_id, available_date],
     function (err) {
       if (err) {
-        res.status(400).json({ error: err.message });
-        return;
+        return res.status(400).json({ error: err.message });
       }
       res.json({ availability_id: this.lastID });
     });
@@ -678,9 +662,15 @@ app.put('/api/available_dates/:id', (req, res) => {
     [venue_id, available_date, id],
     function (err) {
       if (err) {
-        res.status(400).json({ error: err.message });
-        return;
+        return res.status(400).json({ error: err.message });
       }
+
+      // Check if any row was updated
+      if (this.changes === 0) {
+        // No rows were affected, meaning the available_dates with the given ID doesn't exist or no changes were made
+        return res.status(400).json({ error: "Available_Date not found or no changes made" });
+      }
+
       res.json({ message: 'Available_Date updated successfully' });
     });
 });
@@ -690,9 +680,15 @@ app.delete('/api/available_dates/:id', (req, res) => {
   const { id } = req.params;
   db.run(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id], function (err) {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(400).json({ error: err.message });
     }
+
+    // Check if any row was deleted
+    if (this.changes === 0) {
+      // No rows were affected, meaning the available_dates with the given ID doesn't exist
+      return res.status(404).json({ error: "Available_Date not found" });
+    }
+
     res.json({ message: 'Available_Date deleted successfully' });
   });
 });
