@@ -137,15 +137,6 @@ db.serialize(() => {
       console.log('Available_Dates table created successfully');
     }
   });
-
-  // Optional: 9. Drop the RSVPs table if you’ve decided to remove it
-  db.run(`DROP TABLE IF EXISTS RSVPs`, (err) => {
-    if (err) {
-      console.error('Error dropping RSVPs table:', err.message);
-    } else {
-      console.log('RSVPs table dropped successfully');
-    }
-  });
 });
 
 // Close the database connection
