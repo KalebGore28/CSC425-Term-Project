@@ -1187,9 +1187,9 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
+											"// Validate HTTP status code is 404",
+											"pm.test(\"Status code is 404\", function () {",
+											"    pm.response.to.have.status(404);",
 											"});",
 											"",
 											"// Validate response time is less than 200ms",
