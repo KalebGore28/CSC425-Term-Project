@@ -447,7 +447,7 @@ app.post('/api/login', (req, res) => {
   // Retrieve the user by email
   db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
     if (err) return res.status(500).json({ error: "Error retrieving user" });
-    if (!user) return res.status(400).json({ error: "User not found" });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     // Compare the provided password with the stored hashed password
     bcrypt.compare(password, user.password, (err, isMatch) => {
