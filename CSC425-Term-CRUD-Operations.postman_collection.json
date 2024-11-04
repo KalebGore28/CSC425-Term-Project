@@ -3369,7 +3369,7 @@
 					"response": []
 				},
 				{
-					"name": "Create new user with used email",
+					"name": "Create new user with same email",
 					"event": [
 						{
 							"listen": "test",
