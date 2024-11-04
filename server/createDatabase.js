@@ -17,16 +17,15 @@ db.serialize(() => {
     }
   });
 
-  // 2. Create Venues Table with owner_id
+  // 2. Create Venues Table without available_dates column, with owner_id
   db.run(`CREATE TABLE IF NOT EXISTS Venues (
     venue_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    owner_id INTEGER NOT NULL,  -- New owner_id column
+    owner_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     location TEXT NOT NULL,
     description TEXT,
     capacity INTEGER,
     price REAL,
-    available_dates TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES Users(user_id) ON DELETE CASCADE
   )`, (err) => {
@@ -37,13 +36,13 @@ db.serialize(() => {
     }
   });
 
-  // 3. Create User_Venue_Rentals Table (formerly User_Venue_Roles) for tracking rentals only
+  // 3. Create User_Venue_Rentals Table for tracking rentals only
   db.run(`CREATE TABLE IF NOT EXISTS User_Venue_Rentals (
     rental_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     venue_id INTEGER NOT NULL,
-    start_date TEXT,  -- Store dates in TEXT format
-    end_date TEXT,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
   )`, (err) => {
@@ -73,25 +72,7 @@ db.serialize(() => {
     }
   });
 
-  // 5. Create RSVPs Table
-  db.run(`CREATE TABLE IF NOT EXISTS RSVPs (
-    rsvp_id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_id INTEGER NOT NULL,
-    guest_id INTEGER NOT NULL,
-    status TEXT CHECK(status IN ('Attending', 'Not Attending', 'Pending')) NOT NULL,
-    guest_count INTEGER DEFAULT 0,
-    response_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
-    FOREIGN KEY (guest_id) REFERENCES Users(user_id) ON DELETE CASCADE
-  )`, (err) => {
-    if (err) {
-      console.error('Error creating RSVPs table:', err.message);
-    } else {
-      console.log('RSVPs table created successfully');
-    }
-  });
-
-  // 6. Create Invitations Table with user_id
+  // 5. Create Invitations Table with user_id
   db.run(`CREATE TABLE IF NOT EXISTS Invitations (
     invitation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
@@ -108,7 +89,7 @@ db.serialize(() => {
     }
   });
 
-  // 7. Create Community_Posts Table
+  // 6. Create Community_Posts Table
   db.run(`CREATE TABLE IF NOT EXISTS Community_Posts (
     post_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
@@ -125,7 +106,7 @@ db.serialize(() => {
     }
   });
 
-  // 8. Create Notifications Table
+  // 7. Create Notifications Table
   db.run(`CREATE TABLE IF NOT EXISTS Notifications (
     notification_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -140,6 +121,29 @@ db.serialize(() => {
       console.error('Error creating Notifications table:', err.message);
     } else {
       console.log('Notifications table created successfully');
+    }
+  });
+
+  // 8. Create Available_Dates Table to manage available dates for venues
+  db.run(`CREATE TABLE IF NOT EXISTS Available_Dates (
+    availability_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venue_id INTEGER NOT NULL,
+    available_date TEXT NOT NULL,  -- Date in 'YYYY-MM-DD' format
+    FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
+  )`, (err) => {
+    if (err) {
+      console.error('Error creating Available_Dates table:', err.message);
+    } else {
+      console.log('Available_Dates table created successfully');
+    }
+  });
+
+  // Optional: 9. Drop the RSVPs table if you’ve decided to remove it
+  db.run(`DROP TABLE IF EXISTS RSVPs`, (err) => {
+    if (err) {
+      console.error('Error dropping RSVPs table:', err.message);
+    } else {
+      console.log('RSVPs table dropped successfully');
     }
   });
 });
