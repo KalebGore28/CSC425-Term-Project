@@ -524,9 +524,16 @@ app.put('/api/users/me', authenticateToken, (req, res) => {
   const userId = req.user.user_id;
   const { name, email } = req.body;
 
+  // Check for missing fields
+  if (!name) {
+    return res.status(400).json({ error: "Name is required" });
+  }
   // Check if the name contains only letters and spaces
   if (!/^[a-zA-Z\s]+$/.test(name)) {
     return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
+  }
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
   }
 
   db.run(`UPDATE Users SET name = ?, email = ? WHERE user_id = ?`, [name, email, userId], function (err) {
@@ -547,6 +554,14 @@ app.put('/api/users/me', authenticateToken, (req, res) => {
 app.put('/api/users/me/password', authenticateToken, (req, res) => {
   const userId = req.user.user_id;
   const { oldPassword, newPassword } = req.body;
+
+  // Check for missing fields
+  if (!oldPassword) {
+    return res.status(400).json({ error: "Old password is required" });
+  }
+  if (!newPassword) {
+    return res.status(400).json({ error: "New password is required" });
+  }
 
   db.get(`SELECT password FROM Users WHERE user_id = ?`, [userId], (err, user) => {
     if (err) {
