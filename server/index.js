@@ -419,6 +419,10 @@ app.post('/api/register', (req, res) => {
   if (!name) {
     return res.status(400).json({ error: "Name is required" });
   }
+  // Check if the name contains only letters and spaces
+  if (!/^[a-zA-Z\s]+$/.test(name)) {
+    return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
+  }
   if (!email) {
     return res.status(400).json({ error: "Email is required" });
   }
@@ -520,8 +524,16 @@ app.put('/api/users/me', authenticateToken, (req, res) => {
   const userId = req.user.user_id;
   const { name, email } = req.body;
 
+  // Check if the name contains only letters and spaces
+  if (!/^[a-zA-Z\s]+$/.test(name)) {
+    return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
+  }
+
   db.run(`UPDATE Users SET name = ?, email = ? WHERE user_id = ?`, [name, email, userId], function (err) {
     if (err) {
+      if (err.code === 'SQLITE_CONSTRAINT') {
+        return res.status(400).json({ error: "Email already in use. Please choose a different email." });
+      }
       return res.status(500).json({ error: "Error updating user profile" });
     }
     if (this.changes === 0) {
