@@ -246,20 +246,65 @@ app.post('/api/invitations', (req, res) => {
 app.put('/api/invitations/:id', (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  db.run(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id], function (err) {
+
+  // Step 1: Retrieve event_id and current invitation status
+  db.get(`SELECT event_id, status AS current_status FROM Invitations WHERE invitation_id = ?`, [id], (err, invitation) => {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
 
-    // Check if any row was updated
-    if (this.changes === 0) {
-      // No rows were affected, meaning the invitation with the given ID doesn't exist or no changes were made
-      return res.status(400).json({ error: "Invitation not found or no changes made" });
+    if (!invitation) {
+      // If the invitation does not exist
+      return res.status(404).json({ error: "Invitation not found" });
     }
 
-    res.json({ message: 'Invitation updated successfully' });
+    const { event_id, current_status } = invitation;
+
+    // Step 2: If changing status to "Accepted", check venue capacity
+    if (status === 'Accepted' && current_status !== 'Accepted') {
+      db.get(`SELECT V.capacity, COUNT(I.invitation_id) AS accepted_count
+                FROM Events AS E
+                JOIN Venues AS V ON E.venue_id = V.venue_id
+                LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
+                WHERE E.event_id = ?`, [event_id], (err, eventInfo) => {
+        if (err) {
+          return res.status(400).json({ error: "Error retrieving event and venue details" });
+        }
+
+        const { capacity, accepted_count } = eventInfo;
+
+        // Check if venue has reached its capacity
+        if (accepted_count >= capacity) {
+          return res.status(400).json({ error: "The venue has reached its maximum capacity. Cannot accept new invitation." });
+        }
+
+        // Proceed with updating the invitation status
+        updateInvitationStatus(id, status, res);
+      });
+    } else {
+      // Proceed with updating the invitation if not accepting or already accepted
+      updateInvitationStatus(id, status, res);
+    }
   });
+
+  // Helper function to update invitation status
+  function updateInvitationStatus(id, status, res) {
+    db.run(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id], function (err) {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      // Check if any row was updated
+      if (this.changes === 0) {
+        // No rows were affected, meaning the invitation with the given ID doesn't exist or no changes were made
+        return res.status(400).json({ error: "Invitation not found or no changes made" });
+      }
+
+      res.json({ message: 'Invitation updated successfully' });
+    });
+  }
 });
+
 
 // Delete an invitation
 app.delete('/api/invitations/:id', (req, res) => {
