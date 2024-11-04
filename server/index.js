@@ -2,6 +2,13 @@ const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
+require('dotenv').config(); // Load environment variables from .env file
+
+const secretKey = process.env.JWT_SECRET_KEY;
+const saltRounds = 10; // Define the salt rounds for bcrypt
 
 // Middleware
 app.use(cors());
@@ -305,7 +312,6 @@ app.put('/api/invitations/:id', (req, res) => {
   }
 });
 
-
 // Delete an invitation
 app.delete('/api/invitations/:id', (req, res) => {
   const { id } = req.params;
@@ -323,7 +329,6 @@ app.delete('/api/invitations/:id', (req, res) => {
     res.json({ message: 'Invitation deleted successfully' });
   });
 });
-
 
 // --- NOTIFICATIONS ENDPOINTS ---
 
@@ -738,8 +743,57 @@ app.delete('/api/available_dates/:id', (req, res) => {
   });
 });
 
-// --- END OF ENDPOINTS ---
+// --- END OF CRUD ENDPOINTS ---
 
+// --- USER REGISTRATION ENDPOINT ---
+
+app.post('/api/register', (req, res) => {
+  const { name, email, password } = req.body;
+
+  // Hash the password
+  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+    if (err) {
+      return res.status(500).json({ error: "Error hashing password" });
+    }
+
+    // Insert the user with the hashed password
+    db.run(
+      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+      [name, email, hashedPassword],
+      function (err) {
+        if (err) {
+          return res.status(400).json({ error: "User registration failed" });
+        }
+        res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
+      }
+    );
+  });
+});
+
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
+
+  // Retrieve the user by email
+  db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
+    if (err) return res.status(500).json({ error: "Error retrieving user" });
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    // Compare the provided password with the stored hashed password
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) return res.status(500).json({ error: "Error comparing passwords" });
+      if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+
+      // Generate a JWT token
+      const token = jwt.sign(
+        { user_id: user.user_id, email: user.email },
+        secretKey,
+        { expiresIn: '1h' }
+      );
+
+      res.json({ message: "Login successful", token });
+    });
+  });
+});
 
 // Start the server
 const PORT = 5001;
