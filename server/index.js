@@ -415,29 +415,44 @@ app.delete('/api/notifications/:id', (req, res) => {
 app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
 
-  // Hash the password
-  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+  // Check for missing fields
+  if (!name) {
+    return res.status(400).json({ error: "Name is required" });
+  }
+  if (!email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+  if (!password) {
+    return res.status(400).json({ error: "Password is required" });
+  }
+
+  // Check if the email already exists in the database
+  db.get(`SELECT email FROM Users WHERE email = ?`, [email], (err, row) => {
     if (err) {
-      return res.status(500).json({ error: "Error hashing password" });
+      return res.status(500).json({ error: "Error checking email uniqueness" });
+    }
+    if (row) {
+      return res.status(400).json({ error: "Email already registered. Please use a different email." });
     }
 
-    // Insert the user with the hashed password
-    db.run(
-      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-      [name, email, hashedPassword],
-      function (err) {
-        if (err) {
-          if (err.code === "SQLITE_CONSTRAINT") {
-            // Specific error message if email is already taken
-            return res.status(400).json({ error: "Email already registered. Please use a different email." });
-          }
-          // General error message for other types of insertion errors
-          return res.status(400).json({ error: "User registration failed" });
-        }
-        // Registration successful
-        res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
+    // Hash the password
+    bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
+      if (err) {
+        return res.status(500).json({ error: "Error hashing password" });
       }
-    );
+
+      // Insert the user with the hashed password
+      db.run(
+        `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+        [name, email, hashedPassword],
+        function (err) {
+          if (err) {
+            return res.status(500).json({ error: "User registration failed" });
+          }
+          res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
+        }
+      );
+    });
   });
 });
 
