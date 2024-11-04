@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const cookieParser = require('cookie-parser');
 
 require('dotenv').config(); // Load environment variables from .env file
 
@@ -13,6 +14,23 @@ const saltRounds = 10; // Define the salt rounds for bcrypt
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
+// Middleware to check for a valid JWT token
+function authenticateToken(req, res, next) {
+  const token = req.cookies.token;  // Retrieve the token from the HTTP-only cookie
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token.' });
+    }
+    req.user = user;  // Add user information to request object
+    next();
+  });
+}
 
 // Database setup
 const db = new sqlite3.Database('./mydb.sqlite', (err) => {
@@ -394,61 +412,137 @@ app.delete('/api/notifications/:id', (req, res) => {
 
 // --- USERS ENDPOINTS ---
 
-// Get all users
-app.get('/api/users', (req, res) => {
-  db.all('SELECT * FROM Users', [], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json({ data: rows });
-  });
-});
-
-// Add a new user
-app.post('/api/users', (req, res) => {
+app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
-  db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`, [name, email, password], function (err) {
+
+  // Hash the password
+  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error hashing password" });
     }
-    res.json({ user_id: this.lastID });
+
+    // Insert the user with the hashed password
+    db.run(
+      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+      [name, email, hashedPassword],
+      function (err) {
+        if (err) {
+          return res.status(400).json({ error: "User registration failed" });
+        }
+        res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
+      }
+    );
   });
 });
 
-// Edit user information
-app.put('/api/users/:id', (req, res) => {
-  const { id } = req.params;
-  const { name, email, password } = req.body;
-  db.run(`UPDATE Users SET name = ?, email = ?, password = ? WHERE user_id = ?`, [name, email, password, id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+app.post('/api/login', (req, res) => {
+  const { email, password } = req.body;
 
-    // Check if any row was updated
-    if (this.changes === 0) {
-      // No rows were affected, meaning the user with the given ID doesn't exist or no changes were made
-      return res.status(400).json({ error: "User not found or no changes made" });
-    }
+  // Retrieve the user by email
+  db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
+    if (err) return res.status(500).json({ error: "Error retrieving user" });
+    if (!user) return res.status(400).json({ error: "User not found" });
 
-    res.json({ message: 'User updated successfully' });
+    // Compare the provided password with the stored hashed password
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) return res.status(500).json({ error: "Error comparing passwords" });
+      if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+
+      // Generate a JWT token
+      const token = jwt.sign(
+        { user_id: user.user_id, email: user.email },
+        secretKey,
+        { expiresIn: '1h' }
+      );
+
+      // Set the token as an HTTP-only cookie
+      res.cookie("token", token, {
+        httpOnly: true,                    // Prevents JavaScript access
+        secure: process.env.NODE_ENV === "production",  // Ensures HTTPS in production
+        sameSite: "Strict",                 // Prevents CSRF attacks
+        maxAge: 3600000                     // 1 hour expiration
+      });
+
+      // Send success response without token in JSON
+      res.json({ message: "Login successful" });
+    });
   });
 });
 
-// Delete a user
-app.delete('/api/users/:id', (req, res) => {
-  const { id } = req.params;
-  db.run(`DELETE FROM Users WHERE user_id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+// Logout (clear cookie)
+app.post('/api/logout', authenticateToken, (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "Strict"
+  });
+  res.json({ message: "Logged out successfully" });
+});
 
-    // Check if any row was deleted
+// Get current user profile
+app.get('/api/users/me', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;
+
+  db.get(`SELECT user_id, name, email, created_at FROM Users WHERE user_id = ?`, [userId], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving user profile" });
+    }
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  });
+});
+
+// Update current user profile
+app.put('/api/users/me', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;
+  const { name, email } = req.body;
+
+  db.run(`UPDATE Users SET name = ?, email = ? WHERE user_id = ?`, [name, email, userId], function (err) {
+    if (err) {
+      return res.status(500).json({ error: "Error updating user profile" });
+    }
     if (this.changes === 0) {
-      // No rows were affected, meaning the user with the given ID doesn't exist
+      return res.status(404).json({ error: "User not found or no changes made" });
+    }
+    res.json({ message: "User profile updated successfully" });
+  });
+});
+
+// Change password
+app.put('/api/users/me/password', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;
+  const { oldPassword, newPassword } = req.body;
+
+  db.get(`SELECT password FROM Users WHERE user_id = ?`, [userId], (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving user information" });
+    }
+    if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ message: 'User deleted successfully' });
+    // Compare old password with stored hash
+    bcrypt.compare(oldPassword, user.password, (err, isMatch) => {
+      if (err || !isMatch) {
+        return res.status(400).json({ error: "Old password is incorrect" });
+      }
+
+      // Hash new password and update
+      bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
+        if (err) {
+          return res.status(500).json({ error: "Error hashing new password" });
+        }
+
+        db.run(`UPDATE Users SET password = ? WHERE user_id = ?`, [hashedPassword, userId], function (err) {
+          if (err) {
+            return res.status(500).json({ error: "Error updating password" });
+          }
+          res.json({ message: "Password updated successfully" });
+        });
+      });
+    });
   });
 });
 
@@ -744,56 +838,6 @@ app.delete('/api/available_dates/:id', (req, res) => {
 });
 
 // --- END OF CRUD ENDPOINTS ---
-
-// --- USER REGISTRATION ENDPOINT ---
-
-app.post('/api/register', (req, res) => {
-  const { name, email, password } = req.body;
-
-  // Hash the password
-  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-    if (err) {
-      return res.status(500).json({ error: "Error hashing password" });
-    }
-
-    // Insert the user with the hashed password
-    db.run(
-      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-      [name, email, hashedPassword],
-      function (err) {
-        if (err) {
-          return res.status(400).json({ error: "User registration failed" });
-        }
-        res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
-      }
-    );
-  });
-});
-
-app.post('/api/login', (req, res) => {
-  const { email, password } = req.body;
-
-  // Retrieve the user by email
-  db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
-    if (err) return res.status(500).json({ error: "Error retrieving user" });
-    if (!user) return res.status(400).json({ error: "User not found" });
-
-    // Compare the provided password with the stored hashed password
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err) return res.status(500).json({ error: "Error comparing passwords" });
-      if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
-
-      // Generate a JWT token
-      const token = jwt.sign(
-        { user_id: user.user_id, email: user.email },
-        secretKey,
-        { expiresIn: '1h' }
-      );
-
-      res.json({ message: "Login successful", token });
-    });
-  });
-});
 
 // Start the server
 const PORT = 5001;
