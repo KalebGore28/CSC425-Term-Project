@@ -427,8 +427,14 @@ app.post('/api/register', (req, res) => {
       [name, email, hashedPassword],
       function (err) {
         if (err) {
+          if (err.code === "SQLITE_CONSTRAINT") {
+            // Specific error message if email is already taken
+            return res.status(400).json({ error: "Email already registered. Please use a different email." });
+          }
+          // General error message for other types of insertion errors
           return res.status(400).json({ error: "User registration failed" });
         }
+        // Registration successful
         res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
       }
     );
@@ -543,6 +549,32 @@ app.put('/api/users/me/password', authenticateToken, (req, res) => {
         });
       });
     });
+  });
+});
+
+// Delete user account
+app.delete('/api/users/me', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;
+
+  // Delete the user from the Users table
+  db.run(`DELETE FROM Users WHERE user_id = ?`, [userId], function (err) {
+    if (err) {
+      return res.status(500).json({ error: "Error deleting user account" });
+    }
+
+    // Check if a user was actually deleted
+    if (this.changes === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Clear the authentication cookie upon successful deletion
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Strict"
+    });
+
+    res.json({ message: "User account deleted successfully" });
   });
 });
 

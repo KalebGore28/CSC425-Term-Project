@@ -1851,449 +1851,6 @@
 			]
 		},
 		{
-			"name": "Users",
-			"item": [
-				{
-					"name": "Correct Usage",
-					"item": [
-						{
-							"name": "Get all users",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(notifications) {",
-											"        pm.expect(notifications).to.have.property('user_id').that.is.a('number');",
-											"        pm.expect(notifications).to.have.property('name').that.is.a('string');",
-											"        pm.expect(notifications).to.have.property('email').that.is.a('string');",
-											"        pm.expect(notifications).to.have.property('password').that.is.a('string');",
-											"        pm.expect(notifications).to.have.property('created_at').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/users",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains user_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('user_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if user_id is the expected value or within a valid range",
-											"    pm.expect(responseData.user_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store user_id as a collection variable",
-											"pm.collectionVariables.set(\"user_id\", responseData.user_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/users",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"Harry\",\n    \"email\": \"harry@example.com\",\n    \"password\": \"securepass\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/users/{{user_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"{{user_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete new user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/users/{{user_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"{{user_id}}"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Incorrect Usage",
-					"item": [
-						{
-							"name": "Create new user with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/users",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user with invalid user_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"Harry\",\n    \"email\": \"harry@example.com\",\n    \"password\": \"securepass\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/users/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"email\": \"harry@example.com\",\n    \"password\": \"securepass\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/users/1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invalid user_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/users/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				}
-			]
-		},
-		{
 			"name": "Venues",
 			"item": [
 				{
@@ -3746,6 +3303,372 @@
 										"api",
 										"available_dates",
 										"-1"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Correct Usage",
+					"item": [
+						{
+							"name": "Create new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 201 Created",
+											"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Check for the registration success message",
+											"pm.test(\"Registration successful message is correct\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+											"});",
+											"",
+											"// Check that the response contains a user_id",
+											"pm.test(\"User ID is returned\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/register",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"register"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Login in new user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 200 OK",
+											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Check for the login success message",
+											"pm.test(\"Login successful message is correct\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+											"});",
+											"",
+											"// Check that the token cookie is set",
+											"pm.test(\"Token cookie is present\", () => {",
+											"    const tokenCookie = pm.cookies.get(\"token\");",
+											"    pm.expect(tokenCookie).to.not.be.undefined;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User Profile",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 200 OK",
+											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Verify required fields and types",
+											"const expectedFields = {",
+											"    user_id: \"number\",",
+											"    name: \"string\",",
+											"    email: \"string\",",
+											"    created_at: \"string\"",
+											"};",
+											"",
+											"Object.keys(expectedFields).forEach(field => {",
+											"    pm.test(`Response has ${field} of type ${expectedFields[field]}`, () => {",
+											"        pm.expect(jsonData).to.have.property(field);",
+											"        pm.expect(jsonData[field]).to.be.a(expectedFields[field]);",
+											"    });",
+											"});",
+											"",
+											"// Optional: Check for specific email value",
+											"pm.test(\"Email is correct\", () => pm.expect(jsonData.email).to.equal(\"example@example.com\"));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/users/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Logout of user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 200 OK",
+											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Check for the logout success message",
+											"pm.test(\"Logout successful message is correct\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"message\", \"Logged out successfully\");",
+											"});",
+											"",
+											"// Check that the token cookie is cleared",
+											"pm.test(\"Token cookie is cleared\", () => {",
+											"    const tokenCookie = pm.cookies.get(\"token\");",
+											"    pm.expect(tokenCookie).to.be.undefined;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/logout",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"logout"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Log back in user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 200 OK",
+											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Check for the login success message",
+											"pm.test(\"Login successful message is correct\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+											"});",
+											"",
+											"// Check that the token cookie is set",
+											"pm.test(\"Token cookie is present\", () => {",
+											"    const tokenCookie = pm.cookies.get(\"token\");",
+											"    pm.expect(tokenCookie).to.not.be.undefined;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/login",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"login"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"// Check that the response status is 200 OK",
+											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+											"",
+											"// Parse the response JSON",
+											"const jsonData = pm.response.json();",
+											"",
+											"// Check for the user deletion success message",
+											"pm.test(\"User deletion message is correct\", () => {",
+											"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+											"});",
+											"",
+											"// Verify that the token cookie is cleared",
+											"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+											"    const tokenCookie = pm.cookies.get(\"token\");",
+											"    pm.expect(tokenCookie).to.be.undefined;",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/users/me",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Incorrect Usage",
+					"item": [
+						{
+							"name": "Create new user with used email",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 400\", function () {",
+											"    pm.response.to.have.status(400);",
+											"});",
+											"",
+											"pm.test(\"Response contains correct error message\", function () {",
+											"    const responseJson = pm.response.json();",
+											"    pm.expect(responseJson).to.have.property(\"error\", \"Email already registered. Please use a different email.\");",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"johndoe@example.com\",\n    \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{base_url}}/api/register",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"register"
 									]
 								}
 							},
