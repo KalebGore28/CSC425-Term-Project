@@ -730,8 +730,8 @@ app.delete('/api/venues/:id', authenticateToken, (req, res) => {
 // --- USER_VENUE_Rentals ENDPOINTS ---
 
 // Get all user_venue_rentals
-app.get('/api/user_venue_rentals', (req, res) => {
-  db.all('SELECT * FROM User_Venue_Rentals', [], (err, rows) => {
+app.get('/api/venue_rentals', (req, res) => {
+  db.all('SELECT * FROM Venue_Rentals', [], (err, rows) => {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
@@ -739,18 +739,26 @@ app.get('/api/user_venue_rentals', (req, res) => {
   });
 });
 
-// Add a new user_venue_rentals
-const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');  // Using date-fns for date handling
+// Import date handling utilities
+const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
 
-app.post('/api/user_venue_rentals', (req, res) => {
-  const { user_id, venue_id, start_date, end_date } = req.body;
+// Create a new venue rental
+app.post('/api/venue_rentals', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;
+  const { venue_id, start_date, end_date } = req.body;
 
-  // Step 1: Parse dates and generate a list of dates for the rental range
+  // Regex to validate date format 'YYYY-MM-DD'
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
+    return res.status(400).json({ error: "Dates must be in 'YYYY-MM-DD' format." });
+  }
+
+  // Existing parsing, range validation, and availability checks
   const start = parseISO(start_date);
   const end = parseISO(end_date);
   const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
 
-  // Step 2: Validate that each date in the range is available
+  // Rest of the validation and overlap checks, as previously implemented
   const placeholders = rentalDates.map(() => '?').join(',');
   const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
 
@@ -766,8 +774,8 @@ app.post('/api/user_venue_rentals', (req, res) => {
       return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
     }
 
-    // Step 3: Check for overlapping rentals in the date range
-    db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
+    // Check for overlapping rentals
+    db.all(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
       if (err) {
         return res.status(400).json({ error: "Error checking for existing rentals" });
       }
@@ -775,12 +783,9 @@ app.post('/api/user_venue_rentals', (req, res) => {
       const hasOverlap = existingRentals.some(rental => {
         const rentalStart = parseISO(rental.start_date);
         const rentalEnd = parseISO(rental.end_date);
-
-        // Check if the new rental range overlaps with the existing rental range
         return (
-          (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||   // New rental overlaps with an existing rental
-          isEqual(start, rentalStart) || isEqual(end, rentalEnd) ||      // New rental starts or ends on the same date
-          (isEqual(start, rentalEnd) || isEqual(end, rentalStart))       // Edge case: new rental exactly overlaps end/start
+          (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
+          isEqual(start, rentalStart) || isEqual(end, rentalEnd)
         );
       });
 
@@ -788,108 +793,95 @@ app.post('/api/user_venue_rentals', (req, res) => {
         return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
       }
 
-      // Step 4: Proceed to add the rental if no overlap is found
+      // Proceed to add the rental if no overlap is found
       db.run(
-        `INSERT INTO User_Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
-        [user_id, venue_id, start_date, end_date],
+        `INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+        [userId, venue_id, start_date, end_date],
         function (err) {
           if (err) {
             return res.status(400).json({ error: err.message });
           }
-          res.json({ rental_id: this.lastID });
+          res.status(201).json({ rental_id: this.lastID, message: "Rental created successfully" });
         }
       );
     });
   });
 });
 
-// Edit user_venue_rentals information
-app.put('/api/user_venue_rentals/:id', (req, res) => {
+// Update a venue rental
+app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { user_id, venue_id, start_date, end_date } = req.body;
+  const { start_date, end_date } = req.body;
+  const userId = req.user.user_id;
 
-  // Step 1: Generate list of dates between start_date and end_date
-  const start = parseISO(start_date);
-  const end = parseISO(end_date);
-  const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
+  // Check if start_date and end_date are provided
+  if (!start_date || !end_date) {
+      return res.status(400).json({ error: "Both start_date and end_date are required." });
+  }
 
-  // Step 2: Validate that each date in the range is available
-  const placeholders = rentalDates.map(() => '?').join(',');
-  const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
+      return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+  }
 
-  db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: "Error retrieving available dates" });
-    }
+  // Ensure start_date is not after end_date
+  if (new Date(start_date) > new Date(end_date)) {
+      return res.status(400).json({ error: "start_date cannot be after end_date." });
+  }
 
-    const availableDates = rows.map(row => row.available_date);
-    const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
-
-    if (unavailableDates.length > 0) {
-      return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
-    }
-
-    // Step 3: Check for overlapping rentals in the date range, excluding the current rental
-    db.all(`SELECT start_date, end_date FROM User_Venue_Rentals WHERE venue_id = ? AND rental_id != ?`, [venue_id, id], (err, existingRentals) => {
+  // Check if the user owns the rental
+  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
       if (err) {
-        return res.status(400).json({ error: "Error checking for existing rentals" });
+          return res.status(500).json({ error: "Error retrieving rental" });
+      }
+      if (!rental) {
+          return res.status(404).json({ error: "Rental not found or you don't have permission to edit this rental" });
       }
 
-      const hasOverlap = existingRentals.some(rental => {
-        const rentalStart = parseISO(rental.start_date);
-        const rentalEnd = parseISO(rental.end_date);
-
-        // Check if the new rental range overlaps with the existing rental range
-        return (
-          (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||   // New rental overlaps with an existing rental
-          isEqual(start, rentalStart) || isEqual(end, rentalEnd) ||      // New rental starts or ends on the same date
-          (isEqual(start, rentalEnd) || isEqual(end, rentalStart))       // Edge case: new rental exactly overlaps end/start
-        );
-      });
-
-      if (hasOverlap) {
-        return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
-      }
-
-      // Step 4: Proceed to update the rental if no overlap is found
-      db.run(
-        `UPDATE User_Venue_Rentals SET user_id = ?, venue_id = ?, start_date = ?, end_date = ? WHERE rental_id = ?`,
-        [user_id, venue_id, start_date, end_date, id],
-        function (err) {
+      // Proceed to update the rental dates
+      db.run(`UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`, [start_date, end_date, id], function (err) {
           if (err) {
-            return res.status(400).json({ error: err.message });
+              return res.status(500).json({ error: "Error updating rental" });
           }
-
-          // Check if any row was updated
           if (this.changes === 0) {
-            // No rows were affected, meaning the rental with the given ID doesn't exist or no changes were made
-            return res.status(400).json({ error: "Rental not found or no changes made" });
+              return res.status(400).json({ error: "No changes made" });
           }
+          res.json({ message: "Venue rental updated successfully" });
+      });
+  });
+});
 
-          res.json({ message: 'User_Venue_Rental updated successfully' });
-        }
-      );
+// Delete a venue rental
+app.delete('/api/venue_rentals/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.user_id; // Retrieve user ID from token
+
+  // Check if the rental exists and belongs to the authenticated user
+  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving rental information" });
+    }
+    if (!rental) {
+      return res.status(404).json({ error: "Rental not found or unauthorized to delete" });
+    }
+
+    // Proceed to delete the rental
+    db.run(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting rental" });
+      }
+
+      // Confirm the deletion
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Rental not found" });
+      }
+
+      res.json({ message: 'Rental deleted successfully' });
     });
   });
 });
 
-// Delete a user_venue_rentals
-app.delete('/api/user_venue_rentals/:id', (req, res) => {
-  const { id } = req.params;
-  db.run(`DELETE FROM User_Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the rental with the given ID doesn't exist
-      return res.status(404).json({ error: "Rental not found" });
-    }
-
-    res.json({ message: 'User_Venue_Rental deleted successfully' });
-  });
-});
 
 // --- AVAILABLE_DATES ENDPOINTS ---
 

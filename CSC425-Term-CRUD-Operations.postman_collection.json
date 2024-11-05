@@ -2122,15 +2122,6 @@
 									"pm.test(\"Venue updated successfully message\", function () {",
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.message).to.eql(\"Venue updated successfully\");",
-									"});",
-									"",
-									"pm.test(\"Response contains the updated fields\", function () {",
-									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"name\", \"Updated Venue Name\");",
-									"    pm.expect(responseJson).to.have.property(\"location\", \"Updated Location\");",
-									"    pm.expect(responseJson).to.have.property(\"description\", \"This is the updated description.\");",
-									"    pm.expect(responseJson).to.have.property(\"capacity\", 200);",
-									"    pm.expect(responseJson).to.have.property(\"price\", 150.00);",
 									"});"
 								],
 								"type": "text/javascript",
@@ -2305,661 +2296,348 @@
 			"name": "Rentals",
 			"item": [
 				{
-					"name": "Correct Usage",
-					"item": [
+					"name": "Get all user rentals",
+					"event": [
 						{
-							"name": "Get all user rentals",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(venues) {",
-											"        pm.expect(venues).to.have.property('rental_id').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('user_id').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('start_date').that.is.a('string');",
-											"        pm.expect(venues).to.have.property('end_date').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new user rental",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains rental_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('rental_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if rental_id is the expected value or within a valid range",
-											"    pm.expect(responseData.rental_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store rental_id as a collection variable",
-											"pm.collectionVariables.set(\"rental_id\", responseData.rental_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-02-01\",\n    \"end_date\" : \"2025-02-01\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new user rental",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\" : \"2025-02-01\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/{{rental_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"{{rental_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete new user rental",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/{{rental_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"{{rental_id}}"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+									"    responseData.data.forEach(function(venues) {",
+									"        pm.expect(venues).to.have.property('rental_id').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('user_id').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('start_date').that.is.a('string');",
+									"        pm.expect(venues).to.have.property('end_date').that.is.a('string');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/venue_rentals",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venue_rentals"
+							]
+						}
+					},
+					"response": []
 				},
 				{
-					"name": "Incorrect Usage",
-					"item": [
+					"name": "Create new test user",
+					"event": [
 						{
-							"name": "Create new user rental with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":-1,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-02-01\",\n    \"end_date\" : \"2025-02-01\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new user rental with conflicting dates",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-25\",\n    \"end_date\" : \"2025-01-25\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new user rental with unavailable dates",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"    ",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-28\",\n    \"end_date\" : \"2025-01-28\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user rental with invalid rental_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\":7,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\" : \"2025-02-01\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user rental with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\": -1,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\" : \"2025-02-01\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user rental with conflicting dates",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\": 1,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-24\",\n    \"end_date\" : \"2025-01-25\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/2",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"2"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update user rental with unavailable dates",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"user_id\": 1,\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-23\",\n    \"end_date\" : \"2025-01-24\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/2",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"2"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invalid rental_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/user_venue_rentals/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"user_venue_rentals",
-										"-1"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 201 Created",
+									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the registration success message",
+									"pm.test(\"Registration successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"User ID is returned\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new rental",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check status code is 201",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// Verify response contains success message and rental_id",
+									"pm.test(\"Rental created successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Rental created successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"rental_id\");",
+									"    ",
+									"    // Store rental_id for future tests if needed",
+									"    pm.collectionVariables.set(\"rental_id\", jsonData.rental_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\": \"2025-02-01\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venue_rentals",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venue_rentals"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update rental",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Verify response contains success message",
+									"pm.test(\"Rental updated successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Venue rental updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"start_date\": \"2025-01-30\",\n  \"end_date\": \"2025-01-31\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venue_rentals/{{rental_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venue_rentals",
+								"{{rental_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete rental",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response body contains the expected success message",
+									"pm.test(\"Rental deleted successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Rental deleted successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/venue_rentals/{{rental_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venue_rentals",
+								"{{rental_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},

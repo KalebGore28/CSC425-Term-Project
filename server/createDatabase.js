@@ -36,8 +36,8 @@ db.serialize(() => {
     }
   });
 
-  // 3. Create User_Venue_Rentals Table for tracking rentals only
-  db.run(`CREATE TABLE IF NOT EXISTS User_Venue_Rentals (
+  // 3. Create Venue_Rentals Table for tracking rentals only
+  db.run(`CREATE TABLE IF NOT EXISTS Venue_Rentals (
     rental_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     venue_id INTEGER NOT NULL,
@@ -47,9 +47,9 @@ db.serialize(() => {
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {
-      console.error('Error creating User_Venue_Rentals table:', err.message);
+      console.error('Error creating Venue_Rentals table:', err.message);
     } else {
-      console.log('User_Venue_Rentals table created successfully');
+      console.log('Venue_Rentals table created successfully');
     }
   });
 
