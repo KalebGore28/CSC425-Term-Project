@@ -816,39 +816,39 @@ app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
 
   // Check if start_date and end_date are provided
   if (!start_date || !end_date) {
-      return res.status(400).json({ error: "Both start_date and end_date are required." });
+    return res.status(400).json({ error: "Both start_date and end_date are required." });
   }
 
   // Validate date format (YYYY-MM-DD)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
-      return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
   }
 
   // Ensure start_date is not after end_date
   if (new Date(start_date) > new Date(end_date)) {
-      return res.status(400).json({ error: "start_date cannot be after end_date." });
+    return res.status(400).json({ error: "start_date cannot be after end_date." });
   }
 
   // Check if the user owns the rental
   db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
-      if (err) {
-          return res.status(500).json({ error: "Error retrieving rental" });
-      }
-      if (!rental) {
-          return res.status(404).json({ error: "Rental not found or you don't have permission to edit this rental" });
-      }
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving rental" });
+    }
+    if (!rental) {
+      return res.status(404).json({ error: "Rental not found or you don't have permission to edit this rental" });
+    }
 
-      // Proceed to update the rental dates
-      db.run(`UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`, [start_date, end_date, id], function (err) {
-          if (err) {
-              return res.status(500).json({ error: "Error updating rental" });
-          }
-          if (this.changes === 0) {
-              return res.status(400).json({ error: "No changes made" });
-          }
-          res.json({ message: "Venue rental updated successfully" });
-      });
+    // Proceed to update the rental dates
+    db.run(`UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`, [start_date, end_date, id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error updating rental" });
+      }
+      if (this.changes === 0) {
+        return res.status(400).json({ error: "No changes made" });
+      }
+      res.json({ message: "Venue rental updated successfully" });
+    });
   });
 });
 
@@ -895,56 +895,115 @@ app.get('/api/available_dates', (req, res) => {
   });
 });
 
-// Add a new available_dates
-app.post('/api/available_dates', (req, res) => {
+// Create a new available date for a venue
+app.post('/api/available_dates', authenticateToken, (req, res) => {
   const { venue_id, available_date } = req.body;
-  db.run(`INSERT INTO Available_Dates (venue_id, available_date) VALUES (?, ?)`,
-    [venue_id, available_date],
-    function (err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      res.json({ availability_id: this.lastID });
-    });
-});
+  const userId = req.user.user_id; // User ID from the token
 
-// Edit available_dates information
-app.put('/api/available_dates/:id', (req, res) => {
-  const { id } = req.params;
-  const { venue_id, available_date } = req.body;
-  db.run(`UPDATE Available_Dates SET venue_id = ?, available_date = ? WHERE availability_id = ?`,
-    [venue_id, available_date, id],
-    function (err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
+  // Validate required fields
+  if (!venue_id || !available_date) {
+    return res.status(400).json({ error: "Both venue_id and available_date are required." });
+  }
 
-      // Check if any row was updated
-      if (this.changes === 0) {
-        // No rows were affected, meaning the available_dates with the given ID doesn't exist or no changes were made
-        return res.status(400).json({ error: "Available_Date not found or no changes made" });
-      }
+  // Validate date format (YYYY-MM-DD)
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(available_date)) {
+    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+  }
 
-      res.json({ message: 'Available_Date updated successfully' });
-    });
-});
-
-// Delete a available_dates
-app.delete('/api/available_dates/:id', (req, res) => {
-  const { id } = req.params;
-  db.run(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id], function (err) {
+  // Step 1: Verify ownership of the venue
+  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id], (err, row) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error verifying venue ownership." });
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Venue not found." });
+    }
+    if (row.owner_id !== userId) {
+      return res.status(403).json({ error: "You do not have permission to modify available dates for this venue." });
     }
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the available_dates with the given ID doesn't exist
-      return res.status(404).json({ error: "Available_Date not found" });
-    }
-
-    res.json({ message: 'Available_Date deleted successfully' });
+    // Step 2: Insert the new available date
+    db.run(
+      `INSERT INTO Available_Dates (venue_id, available_date) VALUES (?, ?)`,
+      [venue_id, available_date],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: "Error creating available date" });
+        }
+        res.status(201).json({ message: "Available date created successfully", availability_id: this.lastID });
+      }
+    );
   });
+});
+
+// Update an available date
+app.put('/api/available_dates/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { venue_id, available_date } = req.body;
+  const userId = req.user.user_id;
+
+  // Check if the availability belongs to the venue owned by the user
+  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving venue ownership data" });
+    }
+    if (!row || row.owner_id !== userId) {
+      return res.status(403).json({ error: "You do not have permission to update this availability date" });
+    }
+
+    // Update the availability date if user has permission
+    db.run(`UPDATE Available_Dates SET venue_id = ?, available_date = ? WHERE availability_id = ?`,
+      [venue_id, available_date, id],
+      function (err) {
+        if (err) {
+          return res.status(400).json({ error: "Error updating availability date" });
+        }
+
+        // Check if any row was updated
+        if (this.changes === 0) {
+          return res.status(404).json({ error: "Availability date not found or no changes made" });
+        }
+
+        res.json({ message: "Availability date updated successfully" });
+      }
+    );
+  });
+});
+
+// Delete an available date
+app.delete('/api/available_dates/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.user_id;
+
+  // Check if the availability date belongs to a venue owned by the user
+  db.get(`SELECT V.owner_id 
+          FROM Available_Dates AD 
+          JOIN Venues V ON AD.venue_id = V.venue_id 
+          WHERE AD.availability_id = ?`,
+    [id],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: "Error retrieving availability data" });
+      }
+      if (!row || row.owner_id !== userId) {
+        return res.status(403).json({ error: "You do not have permission to delete this availability date" });
+      }
+
+      // Proceed to delete the availability date if ownership is confirmed
+      db.run(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id], function (err) {
+        if (err) {
+          return res.status(500).json({ error: "Error deleting availability date" });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: "Availability date not found" });
+        }
+
+        res.json({ message: "Availability date deleted successfully" });
+      });
+    }
+  );
 });
 
 // --- END OF CRUD ENDPOINTS ---
