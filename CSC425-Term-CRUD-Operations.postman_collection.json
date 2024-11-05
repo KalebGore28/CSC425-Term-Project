@@ -1851,6 +1851,408 @@
 			]
 		},
 		{
+			"name": "Availability",
+			"item": [
+				{
+					"name": "Get availability dates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/available_dates",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"available_dates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 201 Created",
+									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the registration success message",
+									"pm.test(\"Registration successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"User ID is returned\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"  pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Venue created successfully\", function () {",
+									"  const responseJson = pm.response.json();",
+									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue created successfully\");",
+									"  pm.expect(responseJson).to.have.property(\"venue_id\");",
+									"",
+									"  // Store venue_id in collection variable",
+									"  pm.collectionVariables.set(\"venue_id\", responseJson.venue_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"The Grand Hall\",\n  \"location\": \"123 Venue St, Cityville\",\n  \"description\": \"A spacious hall ideal for weddings and large events.\",\n  \"capacity\": 200,\n  \"price\": 1500\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Add new venue dates",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Available date created successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Available date created successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"availability_id\");",
+									"});",
+									"",
+									"const jsonData = pm.response.json();",
+									"pm.collectionVariables.set(\"availability_id\", jsonData.availability_id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"venue_id\": \"{{venue_id}}\",\n  \"available_date\": \"2024-11-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/available_dates",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"available_dates"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update venue dates",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Availability date updated successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"venue_id\": \"{{venue_id}}\",\n    \"available_date\": \"2025-02-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"available_dates",
+								"{{availability_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete venue dates",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Availability date deleted successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date deleted successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"available_dates",
+								"{{availability_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check if the response confirms deletion",
+									"pm.test(\"Venue deleted successfully\", function () {",
+									"  const responseJson = pm.response.json();",
+									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue deleted successfully\");",
+									"});",
+									"",
+									"// Remove the venue_id from collection variables after deletion",
+									"pm.collectionVariables.unset(\"venue_id\");"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/venues/{{venue_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues",
+								"{{venue_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Venues",
 			"item": [
 				{
@@ -2638,361 +3040,6 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "Availability",
-			"item": [
-				{
-					"name": "Correct Usage",
-					"item": [
-						{
-							"name": "Get availability dates",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/available_dates",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Add new available date",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains availability_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('availability_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if availability_id is the expected value or within a valid range",
-											"    pm.expect(responseData.availability_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store availability_id as a collection variable",
-											"pm.collectionVariables.set(\"availability_id\", responseData.availability_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"venue_id\": 1,\n    \"available_date\": \"2025-02-25\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/available_dates",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new availability date",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"venue_id\": 1,\n    \"available_date\": \"2025-02-26\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates",
-										"{{availability_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete new availability date",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/available_dates/{{availability_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates",
-										"{{availability_id}}"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Incorrect Usage",
-					"item": [
-						{
-							"name": "Add new available date with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"venue_id\": -1,\n    \"available_date\": \"2025-02-25\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/available_dates",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new availability date with invalid availability_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"venue_id\": 1,\n    \"available_date\": \"2025-02-26\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/available_dates/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete new availability date with invalid availability_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/available_dates/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"available_dates",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						}
-					]
 				}
 			]
 		},
