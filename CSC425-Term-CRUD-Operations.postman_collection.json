@@ -1854,444 +1854,450 @@
 			"name": "Venues",
 			"item": [
 				{
-					"name": "Correct Usage",
-					"item": [
+					"name": "Get all venues",
+					"event": [
 						{
-							"name": "Get all venues",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(venues) {",
-											"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('name').that.is.a('string');",
-											"        pm.expect(venues).to.have.property('location').that.is.a('string');",
-											"        pm.expect(venues).to.have.property('description').that.is.a('string');",
-											"        pm.expect(venues).to.have.property('capacity').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('price').that.is.a('number');",
-											"        pm.expect(venues).to.have.property('created_at').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/venues",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new venue",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains venue_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('venue_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if venue_id is the expected value or within a valid range",
-											"    pm.expect(responseData.venue_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store venue_id as a collection variable",
-											"pm.collectionVariables.set(\"venue_id\", responseData.venue_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"owner_id\": 7,\n    \"name\": \"New Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/venues",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new venue",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"Updated Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/venues/{{venue_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues",
-										"{{venue_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete new venue",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/venues/{{venue_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues",
-										"{{venue_id}}"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+									"    responseData.data.forEach(function(venues) {",
+									"        pm.expect(venues).to.have.property('venue_id').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('name').that.is.a('string');",
+									"        pm.expect(venues).to.have.property('location').that.is.a('string');",
+									"        pm.expect(venues).to.have.property('description').that.is.a('string');",
+									"        pm.expect(venues).to.have.property('capacity').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('price').that.is.a('number');",
+									"        pm.expect(venues).to.have.property('created_at').that.is.a('string');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
 				},
 				{
-					"name": "Incorrect Usage",
-					"item": [
+					"name": "Create new test user",
+					"event": [
 						{
-							"name": "Create new venue with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"owner_id\": -1,\n    \"name\": \"New Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/venues",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new venue with invalid venue_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"name\": \"Updated Venue\",\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/venues/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update new venue with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"location\": \"42 Wallaby Way Sydney\",\n    \"description\": \"I remember where it was!\",\n    \"capacity\": 200,\n    \"price\": 300\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/venues/1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues",
-										"1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invalid venue_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/venues/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"venues",
-										"-1"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 201 Created",
+									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the registration success message",
+									"pm.test(\"Registration successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"User ID is returned\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"  pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Venue created successfully\", function () {",
+									"  const responseJson = pm.response.json();",
+									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue created successfully\");",
+									"  pm.expect(responseJson).to.have.property(\"venue_id\");",
+									"",
+									"  // Store venue_id in collection variable",
+									"  pm.collectionVariables.set(\"venue_id\", responseJson.venue_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"The Grand Hall\",\n  \"location\": \"123 Venue St, Cityville\",\n  \"description\": \"A spacious hall ideal for weddings and large events.\",\n  \"capacity\": 200,\n  \"price\": 1500\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new venue with missing data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});",
+									"",
+									"pm.test(\"Response contains correct error message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property(\"error\", \"All fields (name, location, description, capacity, price) are required.\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update new venue info",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Venue updated successfully message\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.eql(\"Venue updated successfully\");",
+									"});",
+									"",
+									"pm.test(\"Response contains the updated fields\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property(\"name\", \"Updated Venue Name\");",
+									"    pm.expect(responseJson).to.have.property(\"location\", \"Updated Location\");",
+									"    pm.expect(responseJson).to.have.property(\"description\", \"This is the updated description.\");",
+									"    pm.expect(responseJson).to.have.property(\"capacity\", 200);",
+									"    pm.expect(responseJson).to.have.property(\"price\", 150.00);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Venue Name\",\n  \"location\": \"Updated Location\",\n  \"description\": \"This is the updated description.\",\n  \"capacity\": 200,\n  \"price\": 150.00\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues/{{venue_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues",
+								"{{venue_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check if status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check if the response confirms deletion",
+									"pm.test(\"Venue deleted successfully\", function () {",
+									"  const responseJson = pm.response.json();",
+									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue deleted successfully\");",
+									"});",
+									"",
+									"// Remove the venue_id from collection variables after deletion",
+									"pm.collectionVariables.unset(\"venue_id\");"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/venues/{{venue_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues",
+								"{{venue_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unauthorized create venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"pm.test(\"Response has correct error message\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.error).to.eql(\"Access denied. No token provided.\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -3316,7 +3322,7 @@
 			"name": "Users",
 			"item": [
 				{
-					"name": "Create new user",
+					"name": "Create new test user",
 					"event": [
 						{
 							"listen": "test",
@@ -3440,7 +3446,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Name<>\"\n}",
+							"raw": "{\n    \"name\": \"Invalid User<>\",\n    \"email\": \"invalid@example.com\",\n    \"password\": \"invalidpassword\" \n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3461,7 +3467,7 @@
 					"response": []
 				},
 				{
-					"name": "Create new user with missing name",
+					"name": "Create new user with missing fields",
 					"event": [
 						{
 							"listen": "test",
@@ -3473,7 +3479,7 @@
 									"",
 									"pm.test(\"Response contains correct error message\", function () {",
 									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"error\", \"Name is required\");",
+									"    pm.expect(responseJson).to.have.property(\"error\", \"All fields (name, email, password) are required.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -3507,99 +3513,7 @@
 					"response": []
 				},
 				{
-					"name": "Create new user with missing email",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Response contains correct error message\", function () {",
-									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"error\", \"Email is required\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Invalid User\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/register",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"register"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create new user with missing password",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Response contains correct error message\", function () {",
-									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"error\", \"Password is required\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Invalid User\",\n    \"email\": \"invalid@example.com\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/register",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"register"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login in new user",
+					"name": "Login in new test user",
 					"event": [
 						{
 							"listen": "test",
@@ -3894,7 +3808,7 @@
 					"response": []
 				},
 				{
-					"name": "Update user profile with missing name",
+					"name": "Update user profile with missing data",
 					"event": [
 						{
 							"listen": "test",
@@ -3906,7 +3820,7 @@
 									"",
 									"pm.test(\"Error message is about invalid name\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.error).to.eql(\"Name is required\");",
+									"    pm.expect(jsonData.error).to.eql(\"Both name and email are required\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -3919,7 +3833,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"email\": \"johndoe@example.com\"\n}",
+							"raw": "{}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3967,53 +3881,6 @@
 						"body": {
 							"mode": "raw",
 							"raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"johndoe@example.com\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/users/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update user profile with missing email",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 400\", function () {",
-									"  pm.response.to.have.status(400);",
-									"});",
-									"",
-									"pm.test(\"Correct error message for existing email\", function () {",
-									"  var jsonData = pm.response.json();",
-									"  pm.expect(jsonData.error).to.eql(\"Email is required\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Updated Name\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -4132,7 +3999,7 @@
 					"response": []
 				},
 				{
-					"name": "Update user password with missing old password",
+					"name": "Update user password with missing data",
 					"event": [
 						{
 							"listen": "test",
@@ -4144,7 +4011,7 @@
 									"});",
 									"pm.test(\"Response contains error message for missing old password\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.error).to.eql(\"Old password is required\");",
+									"    pm.expect(jsonData.error).to.eql(\"Both oldPassword and newPassword are required\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -4157,55 +4024,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"newPassword\": \"newpassword\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/users/me/password",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me",
-								"password"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update user password with missing new password",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Test for error response when new password is missing",
-									"pm.test(\"Status code is 400 if new password is missing\", function () {",
-									"    pm.response.to.have.status(400);",
-									"});",
-									"pm.test(\"Response contains error message for missing new password\", function () {",
-									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData.error).to.eql(\"New password is required\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"oldPassword\": \"testpassword\"\n}",
+							"raw": "{}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -4497,10 +4316,6 @@
 		},
 		{
 			"key": "cleanup_notification_id",
-			"value": ""
-		},
-		{
-			"key": "venue_id",
 			"value": ""
 		},
 		{

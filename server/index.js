@@ -416,18 +416,13 @@ app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
 
   // Check for missing fields
-  if (!name) {
-    return res.status(400).json({ error: "Name is required" });
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "All fields (name, email, password) are required." });
   }
+
   // Check if the name contains only letters and spaces
   if (!/^[a-zA-Z\s]+$/.test(name)) {
     return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
-  }
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
-  }
-  if (!password) {
-    return res.status(400).json({ error: "Password is required" });
   }
 
   // Check if the email already exists in the database
@@ -462,6 +457,11 @@ app.post('/api/register', (req, res) => {
 
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
+
+  // Check for missing fields
+  if (!email || !password) {
+    return res.status(400).json({ error: "Both email and password are required" });
+  }
 
   // Retrieve the user by email
   db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
@@ -525,15 +525,13 @@ app.put('/api/users/me', authenticateToken, (req, res) => {
   const { name, email } = req.body;
 
   // Check for missing fields
-  if (!name) {
-    return res.status(400).json({ error: "Name is required" });
+  if (!name || !email) {
+    return res.status(400).json({ error: "Both name and email are required" });
   }
+
   // Check if the name contains only letters and spaces
   if (!/^[a-zA-Z\s]+$/.test(name)) {
     return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
-  }
-  if (!email) {
-    return res.status(400).json({ error: "Email is required" });
   }
 
   db.run(`UPDATE Users SET name = ?, email = ? WHERE user_id = ?`, [name, email, userId], function (err) {
@@ -556,11 +554,8 @@ app.put('/api/users/me/password', authenticateToken, (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
   // Check for missing fields
-  if (!oldPassword) {
-    return res.status(400).json({ error: "Old password is required" });
-  }
-  if (!newPassword) {
-    return res.status(400).json({ error: "New password is required" });
+  if (!oldPassword || !newPassword) {
+    return res.status(400).json({ error: "Both oldPassword and newPassword are required" });
   }
 
   db.get(`SELECT password FROM Users WHERE user_id = ?`, [userId], (err, user) => {
@@ -632,54 +627,103 @@ app.get('/api/venues', (req, res) => {
   });
 });
 
-// Add a new venue
-app.post('/api/venues', (req, res) => {
-  const { owner_id, name, location, description, capacity, price } = req.body;
-  db.run(`INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
+// Create a new venue
+app.post('/api/venues', authenticateToken, (req, res) => {
+  const { name, location, description, capacity, price } = req.body;
+  const owner_id = req.user.user_id; // Get user_id from the authenticated token
+
+  // Validate required fields
+  if (!name || !location || !description || !capacity || !price) {
+    return res.status(400).json({ error: "All fields (name, location, description, capacity, price) are required." });
+  }
+
+  db.run(
+    `INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
     [owner_id, name, location, description, capacity, price],
     function (err) {
       if (err) {
-        return res.status(400).json({ error: err.message });
+        return res.status(500).json({ error: "Error creating venue" });
       }
-      res.json({ venue_id: this.lastID });
-    });
+      res.status(201).json({ message: "Venue created successfully", venue_id: this.lastID });
+    }
+  );
 });
 
-// Edit venue information
-app.put('/api/venues/:id', (req, res) => {
+// Update venue information
+app.put('/api/venues/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { name, location, description, capacity, price, available_dates } = req.body;
-  db.run(`UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ? WHERE venue_id = ?`,
-    [name, location, description, capacity, price, id],
-    function (err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
+  const userId = req.user.user_id;
+  const { name, location, description, capacity, price } = req.body;
 
-      // Check if any row was updated
-      if (this.changes === 0) {
-        // No rows were affected, meaning the venue with the given ID doesn't exist or no changes were made
-        return res.status(400).json({ error: "Venue not found or no changes made" });
-      }
+  // Check for missing required fields
+  if (!name || !location) {
+    return res.status(400).json({ error: "Both name and location are required." });
+  }
 
-      res.json({ message: 'Venue updated successfully' });
-    });
+  // Validate data types for other fields
+  if (capacity !== undefined && (!Number.isInteger(capacity) || capacity <= 0)) {
+    return res.status(400).json({ error: "Capacity must be a positive integer." });
+  }
+  if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
+    return res.status(400).json({ error: "Price must be a positive number." });
+  }
+
+  // Check if the venue belongs to the authenticated user
+  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving venue data." });
+    }
+    if (!row) {
+      return res.status(404).json({ error: "Venue not found." });
+    }
+    if (row.owner_id !== userId) {
+      return res.status(403).json({ error: "You do not have permission to update this venue." });
+    }
+
+    // Update the venue if ownership and validation pass
+    db.run(
+      `UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ? WHERE venue_id = ?`,
+      [name, location, description, capacity, price, id],
+      function (err) {
+        if (err) {
+          return res.status(500).json({ error: "Error updating venue." });
+        }
+        if (this.changes === 0) {
+          return res.status(400).json({ error: "No changes made to the venue." });
+        }
+        res.json({ message: "Venue updated successfully" });
+      }
+    );
+  });
 });
 
 // Delete a venue
-app.delete('/api/venues/:id', (req, res) => {
+app.delete('/api/venues/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  db.run(`DELETE FROM Venues WHERE venue_id = ?`, [id], function (err) {
+  const userId = req.user.user_id;  // Retrieve user_id from the token
+
+  // Check if the venue exists and belongs to the authenticated user
+  db.get(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [id, userId], (err, venue) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error retrieving venue information" });
+    }
+    if (!venue) {
+      return res.status(404).json({ error: "Venue not found or unauthorized to delete" });
     }
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the venue with the given ID doesn't exist
-      return res.status(404).json({ error: "Venue not found" });
-    }
-    res.json({ message: 'Venue deleted successfully' });
+    // Proceed to delete the venue
+    db.run(`DELETE FROM Venues WHERE venue_id = ?`, [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting venue" });
+      }
+
+      // Confirm that the venue was deleted
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Venue not found" });
+      }
+
+      res.json({ message: 'Venue deleted successfully' });
+    });
   });
 });
 
