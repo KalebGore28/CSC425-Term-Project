@@ -6,6 +6,9 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
 
+// Import date handling utilities
+const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
+
 require('dotenv').config(); // Load environment variables from .env file
 
 const secretKey = process.env.JWT_SECRET_KEY;
@@ -118,37 +121,227 @@ app.get('/api/events', (req, res) => {
   });
 });
 
-// Add a new event
-app.post('/api/events', (req, res) => {
-  const { venue_id, organizer_id, name, description, event_date } = req.body;
-  db.run(`INSERT INTO Events (venue_id, organizer_id, name, description, event_date) VALUES (?, ?, ?, ?, ?)`,
-    [venue_id, organizer_id, name, description, event_date],
-    function (err) {
+// Create a new event
+app.post('/api/events', authenticateToken, (req, res) => {
+  const userId = req.user.user_id;  // Get user ID from token
+  const { venue_id, name, description, start_date, end_date } = req.body;
+
+  // Step 1: Check for initial required fields for both renter and owner
+  if (!venue_id || !name || !description) {
+    return res.status(400).json({ error: "Venue ID, name, and description are required." });
+  }
+
+  // Step 2: Check if user is authorized to create an event for this venue (either owner or active renter)
+  db.get(
+    `SELECT owner_id FROM Venues WHERE venue_id = ?`,
+    [venue_id],
+    (err, venue) => {
       if (err) {
-        return res.status(400).json({ error: err.message });
+        return res.status(500).json({ error: "Error retrieving venue information" });
       }
-      res.json({ event_id: this.lastID });
-    });
+      if (!venue) {
+        return res.status(404).json({ error: "Venue not found" });
+      }
+
+      const isOwner = venue.owner_id === userId;
+      const today = new Date();
+
+      if (isOwner) {
+        // Step 3: If user is the owner, parse and validate the dates provided
+        if (!start_date || !end_date) {
+          return res.status(400).json({ error: "Start date and end date are required for owners." });
+        }
+
+        const eventStartDate = parseISO(start_date);
+        const eventEndDate = parseISO(end_date);
+
+        if (isBefore(eventStartDate, today) || isBefore(eventEndDate, today)) {
+          return res.status(400).json({ error: "Event dates cannot be in the past." });
+        }
+        if (isAfter(eventStartDate, eventEndDate)) {
+          return res.status(400).json({ error: "End date cannot be before start date." });
+        }
+
+        // Step 4: Check that the event dates do not overlap with existing rentals by other users
+        db.all(
+          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`,
+          [venue_id, userId],
+          (err, rentals) => {
+            if (err) {
+              return res.status(500).json({ error: "Error retrieving rental dates." });
+            }
+
+            const hasOverlap = rentals.some(rental => {
+              const rentalStart = parseISO(rental.start_date);
+              const rentalEnd = parseISO(rental.end_date);
+              return (
+                (isBefore(eventStartDate, rentalEnd) && isAfter(eventEndDate, rentalStart)) ||
+                (isBefore(eventStartDate, rentalStart) && isAfter(eventEndDate, rentalEnd))
+              );
+            });
+
+            if (hasOverlap) {
+              return res.status(400).json({ error: "Event dates overlap with an existing rental by another user." });
+            }
+
+            // If no overlap, proceed to create the event for the owner
+            createEvent(userId, venue_id, name, description, start_date, end_date, res);
+          }
+        );
+      } else {
+        // Step 5: If user is not the owner, ensure they have an active rental for the venue
+        db.get(
+          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id = ? AND end_date >= ?`,
+          [venue_id, userId, today],
+          (err, rental) => {
+            if (err) {
+              return res.status(500).json({ error: "Error checking rental status." });
+            }
+            if (!rental) {
+              return res.status(403).json({ error: "Not authorized to create an event for this venue." });
+            }
+
+            // Use rental dates as event dates if renter is creating the event
+            createEvent(userId, venue_id, name, description, rental.start_date, rental.end_date, res);
+          }
+        );
+      }
+    }
+  );
+
+  // Helper function to create an event
+  function createEvent(userId, venueId, name, description, startDate, endDate, res) {
+    db.run(
+      `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
+      [venueId, userId, name, description, startDate, endDate],
+      function (err) {
+        if (err) {
+          console.error("Error executing INSERT INTO Events:", err.message);
+          return res.status(500).json({ error: "Error creating event", details: err.message });
+        }
+        res.status(201).json({ message: "Event created successfully", event_id: this.lastID });
+      }
+    );
+  }
 });
 
-// Edit event information
-app.put('/api/events/:id', (req, res) => {
+// Update event information
+app.put('/api/events/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const { venue_id, organizer_id, name, description, event_date } = req.body;
-  db.run(`UPDATE Events SET venue_id = ?, organizer_id = ?, name = ?, description = ?, event_date = ? WHERE event_id = ?`,
-    [venue_id, organizer_id, name, description, event_date, id],
-    function (err) {
+  const { name, description, event_date_start, event_date_end } = req.body;
+  const userId = req.user.user_id;
+
+  // Step 1: Validate the fields provided
+  if (!name && !description && (!event_date_start || !event_date_end)) {
+    return res.status(400).json({ error: "At least one field to update (name, description, or dates) is required." });
+  }
+
+  // Step 2: Retrieve the event and associated venue
+  db.get(
+    `SELECT E.organizer_id, E.venue_id, V.owner_id FROM Events AS E 
+     JOIN Venues AS V ON E.venue_id = V.venue_id 
+     WHERE E.event_id = ?`,
+    [id],
+    (err, event) => {
       if (err) {
-        return res.status(400).json({ error: err.message });
+        return res.status(500).json({ error: "Error retrieving event information" });
+      }
+      if (!event) {
+        return res.status(404).json({ error: "Event not found" });
       }
 
-      // Check if any row was updated
-      if (this.changes === 0) {
-        // No rows were affected, meaning the event with the given ID doesn't exist or no changes were made
-        return res.status(400).json({ error: "Event not found or no changes made" });
+      const isOrganizer = event.organizer_id === userId;
+      const isOwner = event.owner_id === userId;
+
+      // Step 3: Define update logic based on role
+      if (isOrganizer && !isOwner) {
+        // Renter updates: only name and description
+        if (event_date_start || event_date_end) {
+          return res.status(403).json({ error: "Renters cannot update event dates" });
+        }
+        db.run(
+          `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
+          [name, description, id],
+          function (err) {
+            if (err) {
+              return res.status(500).json({ error: "Error updating event" });
+            }
+            if (this.changes === 0) {
+              return res.status(400).json({ error: "No changes made to the event" });
+            }
+            res.json({ message: "Event updated successfully" });
+          }
+        );
+      } else if (isOwner) {
+        // Owner updates: can update name, description, and dates with validation
+        if (event_date_start && event_date_end) {
+          const start = parseISO(event_date_start);
+          const end = parseISO(event_date_end);
+
+          if (isAfter(start, end)) {
+            return res.status(400).json({ error: "Start date cannot be after end date" });
+          }
+
+          // Check for conflicts with existing rentals
+          db.all(
+            `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`,
+            [event.venue_id, userId],
+            (err, rentals) => {
+              if (err) {
+                return res.status(500).json({ error: "Error retrieving rental information" });
+              }
+
+              const hasConflict = rentals.some(rental => {
+                const rentalStart = parseISO(rental.start_date);
+                const rentalEnd = parseISO(rental.end_date);
+
+                return (
+                  (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
+                  isEqual(start, rentalStart) || isEqual(end, rentalEnd)
+                );
+              });
+
+              if (hasConflict) {
+                return res.status(400).json({ error: "Event dates conflict with existing rentals at the venue" });
+              }
+
+              // If no conflict, proceed with update
+              db.run(
+                `UPDATE Events SET name = ?, description = ?, event_date_start = ?, event_date_end = ? WHERE event_id = ?`,
+                [name, description, event_date_start, event_date_end, id],
+                function (err) {
+                  if (err) {
+                    return res.status(500).json({ error: "Error updating event" });
+                  }
+                  if (this.changes === 0) {
+                    return res.status(400).json({ error: "No changes made to the event" });
+                  }
+                  res.json({ message: "Event updated successfully" });
+                }
+              );
+            }
+          );
+        } else {
+          // Owner updating only name and description
+          db.run(
+            `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
+            [name, description, id],
+            function (err) {
+              if (err) {
+                return res.status(500).json({ error: "Error updating event" });
+              }
+              if (this.changes === 0) {
+                return res.status(400).json({ error: "No changes made to the event" });
+              }
+              res.json({ message: "Event updated successfully" });
+            }
+          );
+        }
+      } else {
+        res.status(403).json({ error: "Not authorized to update this event" });
       }
-      res.json({ message: 'Event updated successfully' });
-    });
+    }
+  );
 });
 
 // Delete an event
@@ -739,10 +932,7 @@ app.get('/api/venue_rentals', (req, res) => {
   });
 });
 
-// Import date handling utilities
-const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
-
-// Create a new venue rental
+// Create a new venue rental with event conflict check
 app.post('/api/venue_rentals', authenticateToken, (req, res) => {
   const userId = req.user.user_id;
   const { venue_id, start_date, end_date } = req.body;
@@ -753,59 +943,85 @@ app.post('/api/venue_rentals', authenticateToken, (req, res) => {
     return res.status(400).json({ error: "Dates must be in 'YYYY-MM-DD' format." });
   }
 
-  // Existing parsing, range validation, and availability checks
+  // Parse dates and validate range
   const start = parseISO(start_date);
   const end = parseISO(end_date);
   const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
 
-  // Rest of the validation and overlap checks, as previously implemented
-  const placeholders = rentalDates.map(() => '?').join(',');
-  const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
-
-  db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: "Error retrieving available dates" });
-    }
-
-    const availableDates = rows.map(row => row.available_date);
-    const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
-
-    if (unavailableDates.length > 0) {
-      return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
-    }
-
-    // Check for overlapping rentals
-    db.all(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
+  // Step 1: Check for conflicts with owner-created events in the Events table
+  db.all(
+    `SELECT event_date_start, event_date_end FROM Events WHERE venue_id = ?`,
+    [venue_id],
+    (err, events) => {
       if (err) {
-        return res.status(400).json({ error: "Error checking for existing rentals" });
+        return res.status(500).json({ error: "Error checking for conflicting events" });
       }
 
-      const hasOverlap = existingRentals.some(rental => {
-        const rentalStart = parseISO(rental.start_date);
-        const rentalEnd = parseISO(rental.end_date);
+      const hasEventConflict = events.some(event => {
+        const eventStart = parseISO(event.event_date_start);
+        const eventEnd = parseISO(event.event_date_end);
+
+        // Check for overlap between event and rental dates
         return (
-          (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-          isEqual(start, rentalStart) || isEqual(end, rentalEnd)
+          (isBefore(start, eventEnd) && isAfter(end, eventStart)) ||
+          isEqual(start, eventStart) || isEqual(end, eventEnd)
         );
       });
 
-      if (hasOverlap) {
-        return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
+      if (hasEventConflict) {
+        return res.status(400).json({ error: "Cannot book venue due to a scheduled event conflict" });
       }
 
-      // Proceed to add the rental if no overlap is found
-      db.run(
-        `INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
-        [userId, venue_id, start_date, end_date],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-          res.status(201).json({ rental_id: this.lastID, message: "Rental created successfully" });
+      // Step 2: Check for available dates in Available_Dates table
+      const placeholders = rentalDates.map(() => '?').join(',');
+      const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
+
+      db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
+        if (err) {
+          return res.status(400).json({ error: "Error retrieving available dates" });
         }
-      );
-    });
-  });
+
+        const availableDates = rows.map(row => row.available_date);
+        const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
+
+        if (unavailableDates.length > 0) {
+          return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
+        }
+
+        // Step 3: Check for overlapping rentals in Venue_Rentals table
+        db.all(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
+          if (err) {
+            return res.status(400).json({ error: "Error checking for existing rentals" });
+          }
+
+          const hasOverlap = existingRentals.some(rental => {
+            const rentalStart = parseISO(rental.start_date);
+            const rentalEnd = parseISO(rental.end_date);
+            return (
+              (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
+              isEqual(start, rentalStart) || isEqual(end, rentalEnd)
+            );
+          });
+
+          if (hasOverlap) {
+            return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
+          }
+
+          // Step 4: If no conflicts, add the rental
+          db.run(
+            `INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+            [userId, venue_id, start_date, end_date],
+            function (err) {
+              if (err) {
+                return res.status(400).json({ error: err.message });
+              }
+              res.status(201).json({ rental_id: this.lastID, message: "Rental created successfully" });
+            }
+          );
+        });
+      });
+    }
+  );
 });
 
 // Update a venue rental
@@ -826,7 +1042,9 @@ app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
   }
 
   // Ensure start_date is not after end_date
-  if (new Date(start_date) > new Date(end_date)) {
+  const start = parseISO(start_date);
+  const end = parseISO(end_date);
+  if (isAfter(start, end)) {
     return res.status(400).json({ error: "start_date cannot be after end_date." });
   }
 
@@ -839,49 +1057,123 @@ app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
       return res.status(404).json({ error: "Rental not found or you don't have permission to edit this rental" });
     }
 
-    // Proceed to update the rental dates
-    db.run(`UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`, [start_date, end_date, id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error updating rental" });
+    const venue_id = rental.venue_id;
+
+    // Step 1: Check for event conflicts in the Events table
+    db.all(
+      `SELECT event_date_start, event_date_end FROM Events WHERE venue_id = ?`,
+      [venue_id],
+      (err, events) => {
+        if (err) {
+          return res.status(500).json({ error: "Error checking for conflicting events" });
+        }
+
+        const hasEventConflict = events.some(event => {
+          const eventStart = parseISO(event.event_date_start);
+          const eventEnd = parseISO(event.event_date_end);
+
+          return (
+            (isBefore(start, eventEnd) && isAfter(end, eventStart)) ||
+            isEqual(start, eventStart) || isEqual(end, eventEnd)
+          );
+        });
+
+        if (hasEventConflict) {
+          return res.status(400).json({ error: "Cannot update rental due to a scheduled event conflict" });
+        }
+
+        // Step 2: Check for overlapping rentals in Venue_Rentals table
+        db.all(
+          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND rental_id != ?`,
+          [venue_id, id],
+          (err, existingRentals) => {
+            if (err) {
+              return res.status(500).json({ error: "Error checking for existing rentals" });
+            }
+
+            const hasOverlap = existingRentals.some(rental => {
+              const rentalStart = parseISO(rental.start_date);
+              const rentalEnd = parseISO(rental.end_date);
+              return (
+                (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
+                isEqual(start, rentalStart) || isEqual(end, rentalEnd)
+              );
+            });
+
+            if (hasOverlap) {
+              return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
+            }
+
+            // Step 3: Proceed to update the rental if no conflicts are found
+            db.run(
+              `UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`,
+              [start_date, end_date, id],
+              function (err) {
+                if (err) {
+                  return res.status(500).json({ error: "Error updating rental" });
+                }
+                if (this.changes === 0) {
+                  return res.status(400).json({ error: "No changes made" });
+                }
+                res.json({ message: "Venue rental updated successfully" });
+              }
+            );
+          }
+        );
       }
-      if (this.changes === 0) {
-        return res.status(400).json({ error: "No changes made" });
-      }
-      res.json({ message: "Venue rental updated successfully" });
-    });
+    );
   });
 });
 
-// Delete a venue rental
-app.delete('/api/venue_rentals/:id', authenticateToken, (req, res) => {
+// Delete an event
+app.delete('/api/events/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id; // Retrieve user ID from token
+  const userId = req.user.user_id;
 
-  // Check if the rental exists and belongs to the authenticated user
-  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
+  // Step 1: Retrieve event details to check if the user is authorized
+  db.get(`SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`, [id], (err, event) => {
     if (err) {
-      return res.status(500).json({ error: "Error retrieving rental information" });
+      return res.status(500).json({ error: "Error retrieving event details" });
     }
-    if (!rental) {
-      return res.status(404).json({ error: "Rental not found or unauthorized to delete" });
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
     }
 
-    // Proceed to delete the rental
-    db.run(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error deleting rental" });
-      }
+    // Step 2: Check if the user is the event creator or the venue owner
+    const isOrganizer = event.organizer_id === userId;
 
-      // Confirm the deletion
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Rental not found" });
-      }
+    // If not the organizer, check if they are the owner of the venue
+    if (!isOrganizer) {
+      db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [event.venue_id], (err, venue) => {
+        if (err) {
+          return res.status(500).json({ error: "Error retrieving venue details" });
+        }
+        if (!venue || venue.owner_id !== userId) {
+          return res.status(403).json({ error: "You do not have permission to delete this event" });
+        }
 
-      res.json({ message: 'Rental deleted successfully' });
-    });
+        // User is the venue owner, proceed to delete the event
+        deleteEvent(id, res);
+      });
+    } else {
+      // User is the organizer, proceed to delete the event
+      deleteEvent(id, res);
+    }
   });
-});
 
+  // Helper function to delete the event
+  function deleteEvent(eventId, res) {
+    db.run(`DELETE FROM Events WHERE event_id = ?`, [eventId], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting event" });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json({ message: "Event deleted successfully" });
+    });
+  }
+});
 
 // --- AVAILABLE_DATES ENDPOINTS ---
 

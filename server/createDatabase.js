@@ -17,7 +17,7 @@ db.serialize(() => {
     }
   });
 
-  // 2. Create Venues Table without available_dates column, with owner_id
+  // 2. Create Venues Table
   db.run(`CREATE TABLE IF NOT EXISTS Venues (
     venue_id INTEGER PRIMARY KEY AUTOINCREMENT,
     owner_id INTEGER NOT NULL,
@@ -36,7 +36,7 @@ db.serialize(() => {
     }
   });
 
-  // 3. Create Venue_Rentals Table for tracking rentals only
+  // 3. Create Venue_Rentals Table for tracking rentals
   db.run(`CREATE TABLE IF NOT EXISTS Venue_Rentals (
     rental_id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -60,7 +60,8 @@ db.serialize(() => {
     organizer_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
-    event_date TIMESTAMP NOT NULL,
+    event_date_start TEXT NOT NULL,
+    event_date_end TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE,
     FOREIGN KEY (organizer_id) REFERENCES Users(user_id) ON DELETE CASCADE
@@ -72,7 +73,7 @@ db.serialize(() => {
     }
   });
 
-  // 5. Create Invitations Table with user_id
+  // 5. Create Invitations Table
   db.run(`CREATE TABLE IF NOT EXISTS Invitations (
     invitation_id INTEGER PRIMARY KEY AUTOINCREMENT,
     event_id INTEGER NOT NULL,
@@ -128,7 +129,7 @@ db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Available_Dates (
     availability_id INTEGER PRIMARY KEY AUTOINCREMENT,
     venue_id INTEGER NOT NULL,
-    available_date TEXT NOT NULL,  -- Date in 'YYYY-MM-DD' format
+    available_date TEXT NOT NULL,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
   )`, (err) => {
     if (err) {
