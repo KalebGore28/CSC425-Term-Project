@@ -14,7 +14,7 @@ require('dotenv').config(); // Load environment variables from .env file
 const secretKey = process.env.JWT_SECRET_KEY;
 const saltRounds = 10; // Define the salt rounds for bcrypt
 
-// Middleware
+// --- MIDDLEWARE ---
 app.use(cors());
 app.use(express.json());
 app.use(cookieParser());
@@ -33,6 +33,16 @@ function authenticateToken(req, res, next) {
     req.user = user;  // Add user information to request object
     next();
   });
+}
+
+// Internal middleware to allow only server-originated requests
+function internalOnly(req, res, next) {
+  // Restrict based on internal headers or local access, for example:
+  const internalHeader = req.headers['x-internal-request'];
+  if (!internalHeader || internalHeader !== 'your-secure-value') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  next();
 }
 
 // Database setup
@@ -576,20 +586,23 @@ app.delete('/api/invitations/:id', (req, res) => {
 
 // --- NOTIFICATIONS ENDPOINTS ---
 
-// Get all notifications for a user
-app.get('/api/users/:user_id/notifications', (req, res) => {
-  const { user_id } = req.params;
-  db.all(`SELECT * FROM Notifications WHERE user_id = ?`, [user_id], (err, rows) => {
+// Get all notifications for the authenticated user
+app.get('/api/notifications', authenticateToken, (req, res) => {
+  const userId = req.user.user_id; // Retrieve user ID from the token
+
+  // Fetch notifications for the authenticated user
+  db.all(`SELECT * FROM Notifications WHERE user_id = ?`, [userId], (err, rows) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error retrieving notifications" });
     }
     res.json({ data: rows });
   });
 });
 
 // Add a new notification
-app.post('/api/notifications', (req, res) => {
+app.post('/internal/api/notifications', internalOnly, (req, res) => {
   const { user_id, event_id, message } = req.body;
+
   db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
     [user_id, event_id, message],
     function (err) {
@@ -601,38 +614,63 @@ app.post('/api/notifications', (req, res) => {
 });
 
 // Update a notification
-app.put('/api/notifications/:id', (req, res) => {
+app.put('/api/notifications/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  db.run(`UPDATE Notifications SET status = ? WHERE notification_id = ?`, [status, id], function (err) {
+  const userId = req.user.user_id; // Get the user ID from the token
+
+  // Step 1: Check if the notification belongs to the authenticated user
+  db.get(`SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`, [id, userId], (err, notification) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error retrieving notification data" });
+    }
+    if (!notification) {
+      return res.status(403).json({ error: "Unauthorized to update this notification or it does not exist" });
     }
 
-    // Check if any row was updated
-    if (this.changes === 0) {
-      // No rows were affected, meaning the notification with the given ID doesn't exist or no changes were made
-      return res.status(400).json({ error: "Notification not found or no changes made" });
-    }
+    // Step 2: Update the notification if it belongs to the user
+    db.run(`UPDATE Notifications SET status = ? WHERE notification_id = ?`, [status, id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error updating notification" });
+      }
 
-    res.json({ message: 'Notification updated successfully' });
+      // Check if any row was updated
+      if (this.changes === 0) {
+        return res.status(400).json({ error: "No changes made to the notification" });
+      }
+
+      res.json({ message: 'Notification updated successfully' });
+    });
   });
 });
 
 // Delete a notification
-app.delete('/api/notifications/:id', (req, res) => {
+app.delete('/api/notifications/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  db.run(`DELETE FROM Notifications WHERE notification_id = ?`, [id], function (err) {
+  const userId = req.user.user_id; // Get user ID from token
+
+  // Step 1: Verify the notification belongs to the authenticated user
+  db.get(`SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`, [id, userId], (err, notification) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error retrieving notification data" });
+    }
+    if (!notification) {
+      return res.status(403).json({ error: "Unauthorized to delete this notification or it does not exist" });
     }
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the notification with the given ID doesn't exist
-      return res.status(404).json({ error: "Notification not found" });
-    }
-    res.json({ message: 'Notification deleted successfully' });
+    // Step 2: Proceed to delete if ownership is confirmed
+    db.run(`DELETE FROM Notifications WHERE notification_id = ?`, [id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting notification" });
+      }
+
+      // Confirm deletion
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Notification not found" });
+      }
+
+      res.json({ message: 'Notification deleted successfully' });
+    });
   });
 });
 
