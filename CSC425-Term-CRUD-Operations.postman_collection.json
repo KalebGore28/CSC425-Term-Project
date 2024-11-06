@@ -454,589 +454,6 @@
 			]
 		},
 		{
-			"name": "Events",
-			"item": [
-				{
-					"name": "Get all events",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Response time is less than 200ms\", function () {",
-									"  pm.expect(pm.response.responseTime).to.be.below(200);",
-									"});",
-									"",
-									"pm.test(\"Validate the schema of the response body\", function () {",
-									"    const responseData = pm.response.json();",
-									"    ",
-									"    pm.expect(responseData).to.be.an('object');",
-									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-									"    responseData.data.forEach(function(events) {",
-									"        pm.expect(events).to.have.property('event_id').that.is.a('number');",
-									"        pm.expect(events).to.have.property('venue_id').that.is.a('number');",
-									"        pm.expect(events).to.have.property('organizer_id').that.is.a('number');",
-									"        pm.expect(events).to.have.property('name').that.is.a('string');",
-									"        pm.expect(events).to.have.property('description').that.is.a('string');",
-									"        pm.expect(events).to.have.property('event_date_start').that.is.a('string');",
-									"        pm.expect(events).to.have.property('event_date_end').that.is.a('string');",
-									"        pm.expect(events).to.have.property('created_at').that.is.a('string');",
-									"    });",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/events",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create new test user",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Check that the response status is 201 Created",
-									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
-									"",
-									"// Parse the response JSON",
-									"const jsonData = pm.response.json();",
-									"",
-									"// Check for the registration success message",
-									"pm.test(\"Registration successful message is correct\", () => {",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
-									"});",
-									"",
-									"// Check that the response contains a user_id",
-									"pm.test(\"User ID is returned\", () => {",
-									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/register",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"register"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login in new test user",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Check that the response status is 200 OK",
-									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-									"",
-									"// Parse the response JSON",
-									"const jsonData = pm.response.json();",
-									"",
-									"// Check for the login success message",
-									"pm.test(\"Login successful message is correct\", () => {",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
-									"});",
-									"",
-									"// Check that the token cookie is set",
-									"pm.test(\"Token cookie is present\", () => {",
-									"    const tokenCookie = pm.cookies.get(\"token\");",
-									"    pm.expect(tokenCookie).to.not.be.undefined;",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/login",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create new rental",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Check status code is 201",
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"});",
-									"",
-									"// Verify response contains success message and rental_id",
-									"pm.test(\"Rental created successfully\", function () {",
-									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Rental created successfully\");",
-									"    pm.expect(jsonData).to.have.property(\"rental_id\");",
-									"    ",
-									"    // Store rental_id for future tests if needed",
-									"    pm.collectionVariables.set(\"rental_id\", jsonData.rental_id);",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\": \"2025-02-01\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/venue_rentals",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"venue_rentals"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create an event from rental",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"});",
-									"",
-									"pm.test(\"Event created successfully\", function () {",
-									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
-									"    pm.expect(responseJson).to.have.property(\"event_id\");",
-									"",
-									"    // Store event_id in collection variables for future use",
-									"    pm.collectionVariables.set(\"event_id\", responseJson.event_id);",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"venue_id\": 1, // Ensure this is for a venue where the user is an owner or renter\n    \"name\": \"Annual Meetup\",\n    \"description\": \"An exciting annual gathering of enthusiasts.\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/events",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Edit a rental event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Event updated successfully\", function () {",
-									"  const jsonData = pm.response.json();",
-									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"Updated Event Name\",\n  \"description\": \"Updated description of the event\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/events/{{event_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events",
-								"{{event_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Event deleted successfully\", function () {",
-									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/events/{{event_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events",
-								"{{event_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create new venue",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"  pm.response.to.have.status(201);",
-									"});",
-									"",
-									"pm.test(\"Venue created successfully\", function () {",
-									"  const responseJson = pm.response.json();",
-									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue created successfully\");",
-									"  pm.expect(responseJson).to.have.property(\"venue_id\");",
-									"",
-									"  // Store venue_id in collection variable",
-									"  pm.collectionVariables.set(\"venue_id\", responseJson.venue_id);",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"The Grand Hall\",\n  \"location\": \"123 Venue St, Cityville\",\n  \"description\": \"A spacious hall ideal for weddings and large events.\",\n  \"capacity\": 200,\n  \"price\": 1500\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/venues",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"venues"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Create an event from owned venue",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 201\", function () {",
-									"    pm.response.to.have.status(201);",
-									"});",
-									"",
-									"pm.test(\"Event created successfully\", function () {",
-									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
-									"    pm.expect(responseJson).to.have.property(\"event_id\");",
-									"",
-									"    // Store event_id in collection variables for future use",
-									"    pm.collectionVariables.set(\"event_id\", responseJson.event_id);",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"venue_id\": \"{{venue_id}}\", // Ensure this is for a venue where the user is an owner or renter\n    \"name\": \"Annual Meetup\",\n    \"description\": \"An exciting annual gathering of enthusiasts.\",\n    \"start_date\" : \"2024-12-21\",\n    \"end_date\" : \"2024-12-21\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/events",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Update owned venue event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"  pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Event updated successfully\", function () {",
-									"  const jsonData = pm.response.json();",
-									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "PUT",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"name\": \"New Event Name\",\n  \"description\": \"Updated event details by owner\",\n  \"event_date_start\": \"2025-02-01\",\n  \"event_date_end\": \"2025-02-03\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/events/{{event_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events",
-								"{{event_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete event",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"pm.test(\"Event deleted successfully\", function () {",
-									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/events/{{event_id}}",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"events",
-								"{{event_id}}"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete test user",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Check that the response status is 200 OK",
-									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-									"",
-									"// Parse the response JSON",
-									"const jsonData = pm.response.json();",
-									"",
-									"// Check for the user deletion success message",
-									"pm.test(\"User deletion message is correct\", () => {",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
-									"});",
-									"",
-									"// Verify that the token cookie is cleared",
-									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
-									"    const tokenCookie = pm.cookies.get(\"token\");",
-									"    pm.expect(tokenCookie).to.be.undefined;",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/users/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
 			"name": "Invitations",
 			"item": [
 				{
@@ -1985,6 +1402,589 @@
 							"response": []
 						}
 					]
+				}
+			]
+		},
+		{
+			"name": "Events",
+			"item": [
+				{
+					"name": "Get all events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+									"    responseData.data.forEach(function(events) {",
+									"        pm.expect(events).to.have.property('event_id').that.is.a('number');",
+									"        pm.expect(events).to.have.property('venue_id').that.is.a('number');",
+									"        pm.expect(events).to.have.property('organizer_id').that.is.a('number');",
+									"        pm.expect(events).to.have.property('name').that.is.a('string');",
+									"        pm.expect(events).to.have.property('description').that.is.a('string');",
+									"        pm.expect(events).to.have.property('event_date_start').that.is.a('string');",
+									"        pm.expect(events).to.have.property('event_date_end').that.is.a('string');",
+									"        pm.expect(events).to.have.property('created_at').that.is.a('string');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 201 Created",
+									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the registration success message",
+									"pm.test(\"Registration successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"User ID is returned\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in new test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new rental",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check status code is 201",
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// Verify response contains success message and rental_id",
+									"pm.test(\"Rental created successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Rental created successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"rental_id\");",
+									"    ",
+									"    // Store rental_id for future tests if needed",
+									"    pm.collectionVariables.set(\"rental_id\", jsonData.rental_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"venue_id\": 1,\n    \"start_date\": \"2025-01-29\",\n    \"end_date\": \"2025-02-01\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venue_rentals",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venue_rentals"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create an event from rental",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Event created successfully\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
+									"    pm.expect(responseJson).to.have.property(\"event_id\");",
+									"",
+									"    // Store event_id in collection variables for future use",
+									"    pm.collectionVariables.set(\"event_id\", responseJson.event_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"venue_id\": 1, // Ensure this is for a venue where the user is an owner or renter\n    \"name\": \"Annual Meetup\",\n    \"description\": \"An exciting annual gathering of enthusiasts.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit a rental event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Event updated successfully\", function () {",
+									"  const jsonData = pm.response.json();",
+									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Event Name\",\n  \"description\": \"Updated description of the event\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Event deleted successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create new venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"  pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Venue created successfully\", function () {",
+									"  const responseJson = pm.response.json();",
+									"  pm.expect(responseJson).to.have.property(\"message\", \"Venue created successfully\");",
+									"  pm.expect(responseJson).to.have.property(\"venue_id\");",
+									"",
+									"  // Store venue_id in collection variable",
+									"  pm.collectionVariables.set(\"venue_id\", responseJson.venue_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"The Grand Hall\",\n  \"location\": \"123 Venue St, Cityville\",\n  \"description\": \"A spacious hall ideal for weddings and large events.\",\n  \"capacity\": 200,\n  \"price\": 1500\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/venues",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"venues"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create an event from owned venue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Event created successfully\", function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
+									"    pm.expect(responseJson).to.have.property(\"event_id\");",
+									"",
+									"    // Store event_id in collection variables for future use",
+									"    pm.collectionVariables.set(\"event_id\", responseJson.event_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"venue_id\": \"{{venue_id}}\", // Ensure this is for a venue where the user is an owner or renter\n    \"name\": \"Annual Meetup\",\n    \"description\": \"An exciting annual gathering of enthusiasts.\",\n    \"start_date\" : \"2024-12-21\",\n    \"end_date\" : \"2024-12-21\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update owned venue event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Event updated successfully\", function () {",
+									"  const jsonData = pm.response.json();",
+									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"New Event Name\",\n  \"description\": \"Updated event details by owner\",\n  \"event_date_start\": \"2025-02-01\",\n  \"event_date_end\": \"2025-02-03\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Event deleted successfully\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete test user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -4188,11 +4188,6 @@
 		{
 			"key": "availability_id",
 			"value": ""
-		},
-		{
-			"key": "venue_id",
-			"value": "",
-			"type": "string"
 		}
 	]
 }

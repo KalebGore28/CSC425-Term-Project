@@ -345,20 +345,53 @@ app.put('/api/events/:id', authenticateToken, (req, res) => {
 });
 
 // Delete an event
-app.delete('/api/events/:id', (req, res) => {
+app.delete('/api/events/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  db.run(`DELETE FROM Events WHERE event_id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+  const userId = req.user.user_id;
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the event with the given ID doesn't exist
+  // Step 1: Retrieve event details to check if the user is authorized
+  db.get(`SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`, [id], (err, event) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving event details" });
+    }
+    if (!event) {
       return res.status(404).json({ error: "Event not found" });
     }
-    res.json({ message: 'Event deleted successfully' });
+
+    // Step 2: Check if the user is the event creator or the venue owner
+    const isOrganizer = event.organizer_id === userId;
+
+    // If not the organizer, check if they are the owner of the venue
+    if (!isOrganizer) {
+      db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [event.venue_id], (err, venue) => {
+        if (err) {
+          return res.status(500).json({ error: "Error retrieving venue details" });
+        }
+        if (!venue || venue.owner_id !== userId) {
+          return res.status(403).json({ error: "You do not have permission to delete this event" });
+        }
+
+        // User is the venue owner, proceed to delete the event
+        deleteEvent(id, res);
+      });
+    } else {
+      // User is the organizer, proceed to delete the event
+      deleteEvent(id, res);
+    }
   });
+
+  // Helper function to delete the event
+  function deleteEvent(eventId, res) {
+    db.run(`DELETE FROM Events WHERE event_id = ?`, [eventId], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting event" });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Event not found" });
+      }
+      res.json({ message: "Event deleted successfully" });
+    });
+  }
 });
 
 // --- INVITATIONS ENDPOINTS ---
@@ -1125,55 +1158,36 @@ app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
   });
 });
 
-// Delete an event
-app.delete('/api/events/:id', authenticateToken, (req, res) => {
+// Delete a venue rental
+app.delete('/api/venue_rentals/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id;
+  const userId = req.user.user_id; // Retrieve user ID from token
 
-  // Step 1: Retrieve event details to check if the user is authorized
-  db.get(`SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`, [id], (err, event) => {
+  // Check if the rental exists and belongs to the authenticated user
+  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
     if (err) {
-      return res.status(500).json({ error: "Error retrieving event details" });
+      return res.status(500).json({ error: "Error retrieving rental information" });
     }
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
+    if (!rental) {
+      return res.status(404).json({ error: "Rental not found or unauthorized to delete" });
     }
 
-    // Step 2: Check if the user is the event creator or the venue owner
-    const isOrganizer = event.organizer_id === userId;
-
-    // If not the organizer, check if they are the owner of the venue
-    if (!isOrganizer) {
-      db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [event.venue_id], (err, venue) => {
-        if (err) {
-          return res.status(500).json({ error: "Error retrieving venue details" });
-        }
-        if (!venue || venue.owner_id !== userId) {
-          return res.status(403).json({ error: "You do not have permission to delete this event" });
-        }
-
-        // User is the venue owner, proceed to delete the event
-        deleteEvent(id, res);
-      });
-    } else {
-      // User is the organizer, proceed to delete the event
-      deleteEvent(id, res);
-    }
-  });
-
-  // Helper function to delete the event
-  function deleteEvent(eventId, res) {
-    db.run(`DELETE FROM Events WHERE event_id = ?`, [eventId], function (err) {
+    // Proceed to delete the rental
+    db.run(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
       if (err) {
-        return res.status(500).json({ error: "Error deleting event" });
+        return res.status(500).json({ error: "Error deleting rental" });
       }
+
+      // Confirm the deletion
       if (this.changes === 0) {
-        return res.status(404).json({ error: "Event not found" });
+        return res.status(404).json({ error: "Rental not found" });
       }
-      res.json({ message: "Event deleted successfully" });
+
+      res.json({ message: 'Rental deleted successfully' });
     });
-  }
+  });
 });
+
 
 // --- AVAILABLE_DATES ENDPOINTS ---
 
