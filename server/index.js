@@ -418,132 +418,166 @@ app.get('/api/events/:event_id/invitations', (req, res) => {
   });
 });
 
-app.post('/api/invitations', (req, res) => {
-  const { event_id, email, status } = req.body;
+// Create an invitation (only accessible by event organizers)
+app.post('/api/invitations', authenticateToken, (req, res) => {
+  const organizerId = req.user.user_id; // Get user ID from the authenticated token
+  const { event_id, email, status = "Sent" } = req.body;
 
-  // Step 1: Retrieve the venue's capacity and current accepted invitations count
-  db.get(`SELECT V.capacity, COUNT(I.invitation_id) AS accepted_count
-            FROM Events AS E
-            JOIN Venues AS V ON E.venue_id = V.venue_id
-            LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
-            WHERE E.event_id = ?`, [event_id], (err, eventInfo) => {
-    if (err) {
-      return res.status(400).json({ error: "Error retrieving event and venue details" });
-    }
-
-    const { capacity, accepted_count } = eventInfo;
-
-    // Check if the venue has reached its capacity
-    if (status === 'Accepted' && accepted_count >= capacity) {
-      return res.status(400).json({ error: "The venue has reached its maximum capacity. Cannot accept new invitation." });
-    }
-
-    // Step 2: Check if the user already exists
-    db.get(`SELECT user_id FROM Users WHERE email = ?`, [email], (err, user) => {
+  // Step 1: Check if the user is the event organizer
+  db.get(
+    `SELECT E.organizer_id, V.owner_id 
+     FROM Events AS E 
+     JOIN Venues AS V ON E.venue_id = V.venue_id 
+     WHERE E.event_id = ?`,
+    [event_id],
+    (err, eventInfo) => {
       if (err) {
-        return res.status(400).json({ error: err.message });
+        return res.status(500).json({ error: "Error retrieving event information" });
+      }
+      if (!eventInfo) {
+        return res.status(404).json({ error: "Event not found" });
       }
 
-      let userId = user ? user.user_id : null;
+      const isOrganizer = eventInfo.organizer_id === organizerId || eventInfo.owner_id === organizerId;
+      if (!isOrganizer) {
+        return res.status(403).json({ error: "You do not have permission to send invitations for this event" });
+      }
 
-      // Step 3: If the user does not exist, create a new one
-      if (!userId) {
-        db.run(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-          ["Placeholder Name", email, "PlaceholderPassword"],
-          function (err) {
+      // Step 2: Check venue capacity for accepted invitations
+      db.get(
+        `SELECT V.capacity, COUNT(I.invitation_id) AS accepted_count
+         FROM Events AS E
+         JOIN Venues AS V ON E.venue_id = V.venue_id
+         LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
+         WHERE E.event_id = ?`,
+        [event_id],
+        (err, capacityInfo) => {
+          if (err) {
+            return res.status(500).json({ error: "Error retrieving event capacity" });
+          }
+          const { capacity, accepted_count } = capacityInfo;
+
+          if (status === 'Accepted' && accepted_count >= capacity) {
+            return res.status(400).json({ error: "The venue has reached its maximum capacity" });
+          }
+
+          // Step 3: Check if the invitee already exists based on email
+          db.get(`SELECT user_id FROM Users WHERE email = ?`, [email], (err, user) => {
             if (err) {
-              return res.status(400).json({ error: err.message });
+              return res.status(500).json({ error: "Error checking user existence" });
             }
 
-            userId = this.lastID; // Newly created user_id
+            let inviteeId = user ? user.user_id : null;
 
-            // Proceed to create the invitation and notification with the new user_id
-            createInvitation(userId);
+            // Step 4: If the user does not exist, create a new one
+            if (!inviteeId) {
+              db.run(
+                `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+                ["New User", email, "PlaceholderPassword"],
+                function (err) {
+                  if (err) {
+                    return res.status(500).json({ error: "Error creating new user for invitation" });
+                  }
+                  inviteeId = this.lastID;
+
+                  // Step 5: Create invitation for the new user
+                  createInvitation(inviteeId);
+                }
+              );
+            } else {
+              // User exists, proceed to create the invitation
+              createInvitation(inviteeId);
+            }
+          });
+
+          // Helper function to create the invitation and send notification
+          function createInvitation(inviteeId) {
+            db.run(
+              `INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
+              [event_id, inviteeId, status],
+              function (err) {
+                if (err) {
+                  return res.status(500).json({ error: "Error creating invitation" });
+                }
+
+                // Create a notification for the invitee
+                createNotification(
+                  inviteeId,
+                  event_id,
+                  `You have been invited to event ID ${event_id}.`
+                );
+
+                res.status(201).json({ invitation_id: this.lastID });
+              }
+            );
           }
-        );
-      } else {
-        // User exists, proceed to create the invitation and notification with the existing user_id
-        createInvitation(userId);
-      }
-    });
 
-    // Helper function to create the invitation and then the notification
-    function createInvitation(userId) {
-      db.run(`INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
-        [event_id, userId, status],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
+          // Helper function to create a notification
+          function createNotification(userId, eventId, message) {
+            db.run(
+              `INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
+              [userId, eventId, message],
+              (err) => {
+                if (err) {
+                  console.error(`Error creating notification for user_id ${userId}:`, err.message);
+                }
+              }
+            );
           }
-
-          const invitationId = this.lastID;
-
-          // Create a notification for the user
-          createNotification(userId, event_id, `You have been invited to event ID ${event_id}.`);
-
-          // Respond with the invitation ID
-          res.json({ invitation_id: invitationId });
         }
       );
     }
-
-    // Helper function to create a notification
-    function createNotification(userId, eventId, message) {
-      db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
-        [userId, eventId, message],
-        (err) => {
-          if (err) {
-            console.error(`Error creating notification for user_id ${userId}:`, err.message);
-          } else {
-            console.log(`Notification created for user_id ${userId}`);
-          }
-        }
-      );
-    }
-  });
+  );
 });
 
-// Update an invitation
-app.put('/api/invitations/:id', (req, res) => {
+// Update an invitation status
+app.put('/api/invitations/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
+  const userId = req.user.user_id; // Get user ID from token
 
-  // Step 1: Retrieve event_id and current invitation status
-  db.get(`SELECT event_id, status AS current_status FROM Invitations WHERE invitation_id = ?`, [id], (err, invitation) => {
+  // Step 1: Retrieve the invitation to ensure it exists and belongs to the authenticated user
+  db.get(`SELECT user_id, event_id FROM Invitations WHERE invitation_id = ?`, [id], (err, invitation) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(500).json({ error: "Error retrieving invitation information" });
     }
-
     if (!invitation) {
-      // If the invitation does not exist
       return res.status(404).json({ error: "Invitation not found" });
     }
+    if (invitation.user_id !== userId) {
+      return res.status(403).json({ error: "You do not have permission to update this invitation" });
+    }
 
-    const { event_id, current_status } = invitation;
-
-    // Step 2: If changing status to "Accepted", check venue capacity
-    if (status === 'Accepted' && current_status !== 'Accepted') {
-      db.get(`SELECT V.capacity, COUNT(I.invitation_id) AS accepted_count
-                FROM Events AS E
-                JOIN Venues AS V ON E.venue_id = V.venue_id
-                LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
-                WHERE E.event_id = ?`, [event_id], (err, eventInfo) => {
+    // Step 2: If changing status to "Accepted," check venue capacity and event expiration
+    if (status === 'Accepted') {
+      // Retrieve event details to check capacity and date
+      db.get(`SELECT E.event_date_start, V.capacity, COUNT(I.invitation_id) AS accepted_count
+              FROM Events AS E
+              JOIN Venues AS V ON E.venue_id = V.venue_id
+              LEFT JOIN Invitations AS I ON E.event_id = I.event_id AND I.status = 'Accepted'
+              WHERE E.event_id = ?`, [invitation.event_id], (err, eventInfo) => {
         if (err) {
-          return res.status(400).json({ error: "Error retrieving event and venue details" });
+          return res.status(500).json({ error: "Error retrieving event and venue details" });
         }
 
-        const { capacity, accepted_count } = eventInfo;
+        const { event_date_start, capacity, accepted_count } = eventInfo;
+        const today = new Date();
 
-        // Check if venue has reached its capacity
+        // Check if the event date is in the past
+        if (new Date(event_date_start) < today) {
+          return res.status(400).json({ error: "Cannot accept invitation. The event has already occurred." });
+        }
+
+        // Check if venue has reached capacity
         if (accepted_count >= capacity) {
-          return res.status(400).json({ error: "The venue has reached its maximum capacity. Cannot accept new invitation." });
+          return res.status(400).json({ error: "Cannot accept invitation. The venue has reached its maximum capacity." });
         }
 
         // Proceed with updating the invitation status
         updateInvitationStatus(id, status, res);
       });
     } else {
-      // Proceed with updating the invitation if not accepting or already accepted
+      // If not accepting or already accepted, just update the status
       updateInvitationStatus(id, status, res);
     }
   });
@@ -552,36 +586,63 @@ app.put('/api/invitations/:id', (req, res) => {
   function updateInvitationStatus(id, status, res) {
     db.run(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id], function (err) {
       if (err) {
-        return res.status(400).json({ error: err.message });
+        return res.status(500).json({ error: "Error updating invitation status" });
       }
-
-      // Check if any row was updated
       if (this.changes === 0) {
-        // No rows were affected, meaning the invitation with the given ID doesn't exist or no changes were made
         return res.status(400).json({ error: "Invitation not found or no changes made" });
       }
-
-      res.json({ message: 'Invitation updated successfully' });
+      res.json({ message: "Invitation status updated successfully" });
     });
   }
 });
 
 // Delete an invitation
-app.delete('/api/invitations/:id', (req, res) => {
+app.delete('/api/invitations/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  db.run(`DELETE FROM Invitations WHERE invitation_id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+  const userId = req.user.user_id; // User ID from the token
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the invitation with the given ID doesn't exist
+  // Step 1: Retrieve the invitation to confirm it exists and get associated user and event IDs
+  db.get(`SELECT user_id, event_id FROM Invitations WHERE invitation_id = ?`, [id], (err, invitation) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving invitation information" });
+    }
+    if (!invitation) {
       return res.status(404).json({ error: "Invitation not found" });
     }
 
-    res.json({ message: 'Invitation deleted successfully' });
+    const isRecipient = invitation.user_id === userId;
+
+    // Step 2: If the user is not the recipient, check if they are the event organizer
+    if (!isRecipient) {
+      db.get(`SELECT organizer_id FROM Events WHERE event_id = ?`, [invitation.event_id], (err, event) => {
+        if (err) {
+          return res.status(500).json({ error: "Error retrieving event information" });
+        }
+        if (!event || event.organizer_id !== userId) {
+          return res.status(403).json({ error: "You do not have permission to delete this invitation" });
+        }
+
+        // User is the organizer, proceed with deletion
+        deleteInvitation(id, res);
+      });
+    } else {
+      // User is the recipient, proceed with deletion
+      deleteInvitation(id, res);
+    }
   });
+
+  // Helper function to delete the invitation
+  function deleteInvitation(invitationId, res) {
+    db.run(`DELETE FROM Invitations WHERE invitation_id = ?`, [invitationId], function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Error deleting invitation" });
+      }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Invitation not found" });
+      }
+      res.json({ message: "Invitation deleted successfully" });
+    });
+  }
 });
 
 // --- NOTIFICATIONS ENDPOINTS ---
