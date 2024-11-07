@@ -1,3 +1,7 @@
+// Source help: Open AI ChatGPT
+// Creation of this code was assisted with AI tools. Especially with authentication and authorization.
+// Additionally with creating tests for the api endpoints, and date handling utilities.
+
 const express = require('express');
 const app = express();
 const sqlite3 = require('sqlite3').verbose();
