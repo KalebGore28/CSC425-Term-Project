@@ -57,66 +57,160 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
 
 // --- COMMUNITY POSTS ENDPOINTS ---
 
-// Get all posts for an event community
-app.get('/api/events/:event_id/posts', (req, res) => {
+// Get all posts for an event community, accessible to users with an accepted invitation or the event organizer
+app.get('/api/events/:event_id/posts', authenticateToken, (req, res) => {
   const { event_id } = req.params;
-  db.all(`SELECT * FROM Community_Posts WHERE event_id = ?`, [event_id], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json({ data: rows });
-  });
-});
+  const user_id = req.user.user_id; // `authenticateToken` should set req.user
 
-// Add a new community post
-app.post('/api/posts', (req, res) => {
-  const { event_id, user_id, content } = req.body;
-  db.run(`INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
-    [event_id, user_id, content],
-    function (err) {
+  // Check if the user is either the organizer of the event or has an accepted invitation
+  db.get(
+    `SELECT EXISTS (
+       SELECT 1 FROM Events WHERE event_id = ? AND organizer_id = ?
+     ) AS is_organizer, EXISTS (
+       SELECT 1 FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'
+     ) AS has_accepted_invite`,
+    [event_id, user_id, event_id, user_id],
+    (err, row) => {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
-      res.json({ post_id: this.lastID });
-    });
+      if (!row.is_organizer && !row.has_accepted_invite) {
+        // User is neither the organizer nor has an accepted invitation
+        return res.status(403).json({ error: "Access denied. Only users with an accepted invitation or the event organizer can view posts." });
+      }
+
+      // User is authorized; fetch posts for the event
+      db.all(
+        `SELECT Community_Posts.post_id, Community_Posts.event_id, Community_Posts.user_id, Community_Posts.content, Community_Posts.created_at,
+                Users.name AS user_name, Events.name AS event_name
+         FROM Community_Posts
+         JOIN Users ON Community_Posts.user_id = Users.user_id
+         JOIN Events ON Community_Posts.event_id = Events.event_id
+         WHERE Community_Posts.event_id = ?`,
+        [event_id],
+        (err, rows) => {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+          res.json({ data: rows });
+        }
+      );
+    }
+  );
+});
+
+// Add a new community post
+app.post('/api/posts', authenticateToken, (req, res) => {
+  const user_id = req.user.user_id; // Get user_id from token
+  const { event_id, content } = req.body;
+
+  // Check if the user has an accepted invitation to this event
+  db.get(
+    `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
+    [event_id, user_id],
+    (err, invitation) => {
+      if (err) {
+        return res.status(500).json({ error: "Error checking invitation status" });
+      }
+      if (!invitation) {
+        return res.status(403).json({ error: "You do not have permission to post in this event's community" });
+      }
+
+      // Insert the community post
+      db.run(
+        `INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
+        [event_id, user_id, content],
+        function (err) {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+          res.json({ post_id: this.lastID, message: "Post created successfully" });
+        }
+      );
+    }
+  );
 });
 
 // Update a community post
-app.put('/api/posts/:id', (req, res) => {
+app.put('/api/posts/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
+  const user_id = req.user.user_id; // Get user_id from token
 
-  db.run(`UPDATE Community_Posts SET content = ? WHERE post_id = ?`, [content, id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
+  // First, check if the post exists and if the user is the author
+  db.get(
+    `SELECT * FROM Community_Posts WHERE post_id = ? AND user_id = ?`,
+    [id, user_id],
+    (err, post) => {
+      if (err) {
+        return res.status(500).json({ error: "Error retrieving post" });
+      }
+      if (!post) {
+        // No post found with the given ID by this user
+        return res.status(403).json({ error: "You do not have permission to update this post" });
+      }
+
+      // If the user is the author, proceed to update the post
+      db.run(
+        `UPDATE Community_Posts SET content = ? WHERE post_id = ?`,
+        [content, id],
+        function (err) {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+
+          // Check if any row was updated
+          if (this.changes === 0) {
+            return res.status(400).json({ error: "No changes made to the post" });
+          }
+
+          res.json({ message: "Post updated successfully" });
+        }
+      );
     }
-
-    // Check if any row was updated
-    if (this.changes === 0) {
-      // No rows were affected, meaning the post with the given ID doesn't exist or no changes were made
-      return res.status(400).json({ error: "Post not found or no changes made" });
-    }
-
-    res.json({ message: 'Post updated successfully' });
-  });
+  );
 });
 
 // Delete a community post
-app.delete('/api/posts/:id', (req, res) => {
+app.delete('/api/posts/:id', authenticateToken, (req, res) => {
   const { id } = req.params;
-  db.run(`DELETE FROM Community_Posts WHERE post_id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+  const user_id = req.user.user_id; // Get user_id from token
 
-    // Check if any row was deleted
-    if (this.changes === 0) {
-      // No rows were affected, meaning the post with the given ID doesn't exist
-      return res.status(404).json({ error: "Post not found" });
-    }
+  // First, get the post details and check permissions
+  db.get(
+    `SELECT Community_Posts.post_id, Community_Posts.user_id AS post_author_id, Events.organizer_id
+     FROM Community_Posts 
+     JOIN Events ON Community_Posts.event_id = Events.event_id 
+     WHERE Community_Posts.post_id = ?`,
+    [id],
+    (err, post) => {
+      if (err) {
+        return res.status(500).json({ error: "Error retrieving post" });
+      }
+      if (!post) {
+        // No post found with the given ID
+        return res.status(404).json({ error: "Post not found" });
+      }
 
-    res.json({ message: 'Post deleted successfully' });
-  });
+      // Check if the user is either the post author or the event organizer
+      if (post.post_author_id !== user_id && post.organizer_id !== user_id) {
+        return res.status(403).json({ error: "You do not have permission to delete this post" });
+      }
+
+      // If the user is authorized, proceed to delete the post
+      db.run(
+        `DELETE FROM Community_Posts WHERE post_id = ?`,
+        [id],
+        function (err) {
+          if (err) {
+            return res.status(400).json({ error: err.message });
+          }
+
+          res.json({ message: "Post deleted successfully" });
+        }
+      );
+    }
+  );
 });
 
 // --- EVENTS ENDPOINTS ---
@@ -449,6 +543,19 @@ app.get('/api/events/:event_id/invitations', authenticateToken, (req, res) => {
   });
 });
 
+// Get all invitations for the authenticated user
+app.get('/api/invitations', authenticateToken, (req, res) => {
+  const userId = req.user.user_id; // Get user ID from the token
+
+  // Fetch invitations for the authenticated user
+  db.all(`SELECT * FROM Invitations WHERE user_id = ?`, [userId], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: "Error retrieving invitations" });
+    }
+    res.json({ data: rows });
+  });
+});
+
 // Create an invitation (only accessible by event organizers)
 app.post('/api/invitations', authenticateToken, (req, res) => {
   const organizerId = req.user.user_id; // Get user ID from the authenticated token
@@ -768,6 +875,7 @@ app.delete('/api/notifications/:id', authenticateToken, (req, res) => {
 
 // --- USERS ENDPOINTS ---
 
+// Register a new user
 app.post('/api/register', (req, res) => {
   const { name, email, password } = req.body;
 
@@ -811,6 +919,7 @@ app.post('/api/register', (req, res) => {
   });
 });
 
+// Login
 app.post('/api/login', (req, res) => {
   const { email, password } = req.body;
 

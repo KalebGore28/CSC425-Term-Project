@@ -664,6 +664,56 @@
 							"response": []
 						},
 						{
+							"name": "Get all invitations for user",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code is 200\", function () {",
+											"  pm.response.to.have.status(200);",
+											"});",
+											"",
+											"pm.test(\"Response time is less than 200ms\", function () {",
+											"  pm.expect(pm.response.responseTime).to.be.below(200);",
+											"});",
+											"",
+											"pm.test(\"Validate the schema of the response body\", function () {",
+											"    const responseData = pm.response.json();",
+											"    ",
+											"    pm.expect(responseData).to.be.an('object');",
+											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+											"    responseData.data.forEach(function(invitation) {",
+											"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
+											"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
+											"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
+											"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
+											"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/invitations",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"invitations"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Create new invitation from event",
 							"event": [
 								{
@@ -4095,6 +4145,60 @@
 										"body": {
 											"mode": "raw",
 											"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{base_url}}/api/login",
+											"host": [
+												"{{base_url}}"
+											],
+											"path": [
+												"api",
+												"login"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Login in attendee 1",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"// Check that the response status is 200 OK",
+													"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+													"",
+													"// Parse the response JSON",
+													"const jsonData = pm.response.json();",
+													"",
+													"// Check for the login success message",
+													"pm.test(\"Login successful message is correct\", () => {",
+													"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+													"});",
+													"",
+													"// Check that the token cookie is set",
+													"pm.test(\"Token cookie is present\", () => {",
+													"    const tokenCookie = pm.cookies.get(\"token\");",
+													"    pm.expect(tokenCookie).to.not.be.undefined;",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"email\": \"lily.scott@example.com\",\n    \"password\": \"lilypass789\"\n}",
 											"options": {
 												"raw": {
 													"language": "json"
