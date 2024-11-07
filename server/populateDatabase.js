@@ -29,6 +29,7 @@ const users = [
 	{ name: 'Hank Young', email: 'hank.young@example.com', password: 'hankpass123' },
 	{ name: 'Isla Brown', email: 'isla.brown@example.com', password: 'brown1234' },
 	{ name: 'Jack King', email: 'jack.king@example.com', password: 'king123pass' },
+	// Attendees of events
 	{ name: 'Lily Scott', email: 'lily.scott@example.com', password: 'lilypass789' },
 	{ name: 'Mason Price', email: 'mason.price@example.com', password: 'pricepass456' },
 	{ name: 'Nina Bell', email: 'nina.bell@example.com', password: 'bellpass123' },
@@ -41,7 +42,7 @@ const users = [
 	{ name: 'Umar Blake', email: 'umar.blake@example.com', password: 'umarpass333' },
 	{ name: 'Vera Hunt', email: 'vera.hunt@example.com', password: 'verapass888' },
 	{ name: 'Will Nash', email: 'will.nash@example.com', password: 'willpass444' },
-	{ name: 'Xena Rose', email: 'xena.rose@example.com', password: 'xenapass666' },
+	{ name: 'Xena Rose', email: 'xena.rose@example.com', password: 'xenapass555' },
 	{ name: 'Yara Diaz', email: 'yara.diaz@example.com', password: 'yarapass555' },
 	{ name: 'Zane Cruz', email: 'zane.cruz@example.com', password: 'zanepass222' },
 ];
