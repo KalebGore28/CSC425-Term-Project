@@ -407,14 +407,45 @@ app.delete('/api/events/:id', authenticateToken, (req, res) => {
 // --- INVITATIONS ENDPOINTS ---
 
 // Get all invitations for an event
-app.get('/api/events/:event_id/invitations', (req, res) => {
+app.get('/api/events/:event_id/invitations', authenticateToken, (req, res) => {
   const { event_id } = req.params;
-  db.all(`SELECT * FROM Invitations WHERE event_id = ?`, [event_id], (err, rows) => {
+  const userId = req.user.user_id; // User ID from the token
+
+  // Step 1: Check if the user is the organizer of the event
+  db.get(`SELECT organizer_id FROM Events WHERE event_id = ?`, [event_id], (err, event) => {
     if (err) {
-      res.status(400).json({ error: err.message });
-      return;
+      return res.status(500).json({ error: "Error retrieving event information" });
     }
-    res.json({ data: rows });
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+
+    const isOrganizer = event.organizer_id === userId;
+
+    if (isOrganizer) {
+      // Step 2: If the user is the organizer, retrieve all invitations for the event
+      db.all(`SELECT * FROM Invitations WHERE event_id = ?`, [event_id], (err, rows) => {
+        if (err) {
+          return res.status(500).json({ error: "Error retrieving invitations" });
+        }
+        res.json({ data: rows });
+      });
+    } else {
+      // Step 3: If the user is not the organizer, retrieve only their own invitation for the event
+      db.get(
+        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ?`,
+        [event_id, userId],
+        (err, invitation) => {
+          if (err) {
+            return res.status(500).json({ error: "Error retrieving invitation" });
+          }
+          if (!invitation) {
+            return res.status(404).json({ error: "No invitation found for the current user" });
+          }
+          res.json({ data: [invitation] });
+        }
+      );
+    }
   });
 });
 
