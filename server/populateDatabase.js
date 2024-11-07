@@ -1,6 +1,8 @@
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
+const { eachDayOfInterval, format, parseISO } = require('date-fns');
+
 
 // Open the database
 const db = new sqlite3.Database('./mydb.sqlite', (err) => {
@@ -66,34 +68,61 @@ const venues = [
 	{ owner_id: 5, name: "Artisan Loft", location: "Art District", description: "Creative loft for artistic events", capacity: 60, price: 450 }
 ];
 
-// Sample bookings
-const availableDates = [
-	{ venue_id: 1, available_date: '2024-11-25' },
-	{ venue_id: 1, available_date: '2024-12-01' },
-	{ venue_id: 1, available_date: '2024-12-15' },
-	{ venue_id: 1, available_date: '2025-01-10' },
-	{ venue_id: 1, available_date: '2025-01-25' },
-	{ venue_id: 2, available_date: '2024-11-26' },
-	{ venue_id: 2, available_date: '2024-12-02' },
-	{ venue_id: 2, available_date: '2024-12-16' },
-	{ venue_id: 2, available_date: '2025-01-11' },
-	{ venue_id: 2, available_date: '2025-01-26' },
-	{ venue_id: 3, available_date: '2024-11-27' },
-	{ venue_id: 3, available_date: '2024-12-03' },
-	{ venue_id: 3, available_date: '2024-12-17' },
-	{ venue_id: 3, available_date: '2025-01-12' },
-	{ venue_id: 3, available_date: '2025-01-27' },
-	{ venue_id: 4, available_date: '2024-11-28' },
-	{ venue_id: 4, available_date: '2024-12-04' },
-	{ venue_id: 4, available_date: '2024-12-18' },
-	{ venue_id: 4, available_date: '2025-01-13' },
-	{ venue_id: 4, available_date: '2025-01-28' },
-	{ venue_id: 5, available_date: '2024-11-29' },
-	{ venue_id: 5, available_date: '2024-12-05' },
-	{ venue_id: 5, available_date: '2024-12-19' },
-	{ venue_id: 5, available_date: '2025-01-14' },
-	{ venue_id: 5, available_date: '2025-01-29' }
+// Define start and end dates for the available date range
+const startDate = parseISO('2024-11-25');
+const endDate = parseISO('2025-02-28');
+venueIds = [1, 2, 3, 4, 5];
+
+// Generate available dates for each venue in the specified date range
+const generateAvailableDates = () => {
+	try {
+		const dates = eachDayOfInterval({ start: startDate, end: endDate }).map(date => format(date, 'yyyy-MM-dd'));
+
+		const availableDates = [];
+		for (const venueId of venueIds) {
+			for (const date of dates) {
+				availableDates.push({ venue_id: venueId, available_date: date });
+			}
+		}
+		console.log(`Total dates generated: ${availableDates.length}`);
+		return availableDates;
+	} catch (error) {
+		console.error('Error generating dates:', error);
+		return [];
+	}
+};
+
+// Sample rental bookings data
+const venueRentals = [
+	// Venue 1 Rentals
+	{ user_id: 6, venue_id: 1, start_date: '2024-11-25', end_date: '2024-11-26' },
+	{ user_id: 7, venue_id: 1, start_date: '2024-12-01', end_date: '2024-12-03' },
+	{ user_id: 8, venue_id: 1, start_date: '2024-12-10', end_date: '2024-12-12' },
+	// Open dates for Venue 1: '2024-12-15' to '2024-12-20'
+
+	// Venue 2 Rentals
+	{ user_id: 8, venue_id: 2, start_date: '2024-12-05', end_date: '2024-12-07' },
+	{ user_id: 9, venue_id: 2, start_date: '2025-01-01', end_date: '2025-01-03' },
+	{ user_id: 10, venue_id: 2, start_date: '2025-01-10', end_date: '2025-01-12' },
+	// Open dates for Venue 2: '2025-01-15' to '2025-01-20'
+
+	// Venue 3 Rentals
+	{ user_id: 9, venue_id: 3, start_date: '2025-01-10', end_date: '2025-01-12' },
+	{ user_id: 10, venue_id: 3, start_date: '2025-01-18', end_date: '2025-01-20' },
+	// Open dates for Venue 3: '2025-01-25' to '2025-01-30'
+
+	// Venue 4 Rentals
+	{ user_id: 6, venue_id: 4, start_date: '2025-01-15', end_date: '2025-01-17' },
+	{ user_id: 7, venue_id: 4, start_date: '2025-01-22', end_date: '2025-01-24' },
+	// Open dates for Venue 4: '2025-01-28' to '2025-02-01'
+
+	// Venue 5 Rentals
+	{ user_id: 8, venue_id: 5, start_date: '2024-12-15', end_date: '2024-12-17' },
+	{ user_id: 9, venue_id: 5, start_date: '2024-12-20', end_date: '2024-12-22' },
+	{ user_id: 10, venue_id: 5, start_date: '2024-12-27', end_date: '2024-12-29' },
+	// Open dates for Venue 5: '2025-01-05' to '2025-01-10'
 ];
+
 
 // Insert a single user
 const insertUser = (user) => {
@@ -143,16 +172,19 @@ const insertAvailableDate = (date) => {
 	});
 };
 
-// Populate available dates
-const populateAvailableDates = async () => {
-	for (const date of availableDates) {
-		try {
-			await insertAvailableDate(date);
-		} catch (error) {
-			console.error(error);
-		}
-	}
-	console.log('All available dates have been added');
+// Insert a single rental booking
+const insertRentalBooking = (rental) => {
+	return new Promise((resolve, reject) => {
+		db.run(
+			`INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+			[rental.user_id, rental.venue_id, rental.start_date, rental.end_date],
+			function (err) {
+				if (err) return reject('Error adding rental booking: ' + err.message);
+				console.log(`Rental booking added with ID: ${this.lastID} for user ${rental.user_id} at venue ${rental.venue_id}`);
+				resolve(this.lastID);
+			}
+		);
+	});
 };
 
 // Populate users
@@ -179,12 +211,39 @@ const populateVenues = async () => {
 	console.log('All venues have been added');
 };
 
+// Populate available dates dynamically
+const populateAvailableDates = async () => {
+	const availableDates = generateAvailableDates();
+	for (const date of availableDates) {
+		try {
+			await insertAvailableDate(date);
+		} catch (error) {
+			console.error(`Error inserting date for venue ${date.venue_id} on ${date.available_date}:`, error);
+		}
+	}
+	console.log('All available dates have been added');
+};
+
+// Populate venue rentals
+const populateVenueRentals = async () => {
+	for (const rental of venueRentals) {
+		try {
+			await insertRentalBooking(rental);
+		} catch (error) {
+			console.error(error);
+		}
+	}
+	console.log('All rental bookings have been added');
+};
+
+
 // Main function to populate the database
 const populateDatabase = async () => {
 	try {
 		await populateUsers();
 		await populateVenues();
 		await populateAvailableDates();
+		await populateVenueRentals();
 	} catch (error) {
 		console.error('Error populating database:', error);
 	} finally {
