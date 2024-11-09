@@ -493,6 +493,25 @@
 					"response": []
 				},
 				{
+					"name": "Delete post in event 1",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Delete user",
 					"event": [
 						{
