@@ -180,8 +180,8 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"  pm.response.to.have.status(200);",
+									"pm.test(\"Status code is 201\", function () {",
+									"  pm.response.to.have.status(201);",
 									"});",
 									"",
 									"pm.test(\"Response time is less than 200ms\", function () {",
@@ -4030,11 +4030,11 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"",
 											"// Test for error response when password is incorrect",
 											"pm.test(\"Status code is 400 if password is incorrect\", function () {",
 											"    pm.response.to.have.status(400);",
 											"});",
+											"",
 											"pm.test(\"Response contains error message for incorrect password\", function () {",
 											"    const jsonData = pm.response.json();",
 											"    pm.expect(jsonData.error).to.eql(\"Invalid credentials\");",
@@ -4050,7 +4050,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"email\": \"johndoe@example.com\",\n    \"password\": \"notapassword\"\n}",
+									"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"notapassword\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -4196,7 +4196,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"name\": \"Updated Name<>\",\n  \"email\": \"johndoe@example.com\"\n}",
+									"raw": "{\n  \"name\": \"Updated Name<>\",\n  \"email\": \"updated@example.com\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -4290,7 +4290,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"johndoe@example.com\"\n}",
+									"raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"frank.green@example.com\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
