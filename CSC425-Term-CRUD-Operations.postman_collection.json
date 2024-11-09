@@ -9,1094 +9,529 @@
 	"item": [
 		{
 			"name": "Community Posts",
-			"item": [
-				{
-					"name": "Correct Usage",
-					"item": [
-						{
-							"name": "Get all posts from event 1",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(post) {  // Change 'posts' to 'data'",
-											"        pm.expect(post).to.have.property('post_id').that.is.a('number');",
-											"        pm.expect(post).to.have.property('event_id').that.is.a('number');",
-											"        pm.expect(post).to.have.property('user_id').that.is.a('number');",
-											"        pm.expect(post).to.have.property('content').that.is.a('string');",
-											"        pm.expect(post).to.have.property('created_at').that.is.a('string');",
-											"    });",
-											"});",
-											""
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/events/1/posts",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"events",
-										"1",
-										"posts"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new post in event 1",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains post_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('post_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if post_id is the expected value or within a valid range",
-											"    pm.expect(responseData.post_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store post_id as a collection variable",
-											"pm.collectionVariables.set(\"post_id\", responseData.post_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"event_id\": 1,\n    \"user_id\": 1,\n    \"content\": \"This is a test post\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/posts",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update post in event 1",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"content\": \"This is an updated test post\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/posts/{{post_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete post from event 1",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/posts/{{post_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"{{post_id}}"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Invalid Usage",
-					"item": [
-						{
-							"name": "Create new post with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"event_id\": -1,\n    \"user_id\": -1,\n    \"content\": \"This is a test post\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/posts",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update post with invalid post_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"content\": \"This is a test post.\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/posts/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update post with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/posts/1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete post with invalid post_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/posts/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"posts",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				}
-			]
+			"item": []
 		},
 		{
 			"name": "Invitations",
 			"item": [
 				{
-					"name": "Correct Usage",
-					"item": [
+					"name": "Create new test user",
+					"event": [
 						{
-							"name": "Login in event organizer",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Check that the response status is 200 OK",
-											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-											"",
-											"// Parse the response JSON",
-											"const jsonData = pm.response.json();",
-											"",
-											"// Check for the login success message",
-											"pm.test(\"Login successful message is correct\", () => {",
-											"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
-											"});",
-											"",
-											"// Check that the token cookie is set",
-											"pm.test(\"Token cookie is present\", () => {",
-											"    const tokenCookie = pm.cookies.get(\"token\");",
-											"    pm.expect(tokenCookie).to.not.be.undefined;",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"email\": \"johndoe@example.com\",\n    \"password\": \"testpassword\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/login",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"login"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Logout of user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Test for successful logout",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response contains success message\", function () {",
-											"    const jsonData = pm.response.json();",
-											"    pm.expect(jsonData.message).to.eql(\"Logged out successfully\");",
-											"});",
-											"",
-											"// Test that the cookie was cleared",
-											"pm.test(\"Token cookie should be cleared\", function () {",
-											"    const cookies = pm.cookies;",
-											"    pm.expect(cookies.has('token')).to.be.false;",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/logout",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"logout"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Login in invited",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Check that the response status is 200 OK",
-											"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-											"",
-											"// Parse the response JSON",
-											"const jsonData = pm.response.json();",
-											"",
-											"// Check for the login success message",
-											"pm.test(\"Login successful message is correct\", () => {",
-											"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
-											"});",
-											"",
-											"// Check that the token cookie is set",
-											"pm.test(\"Token cookie is present\", () => {",
-											"    const tokenCookie = pm.cookies.get(\"token\");",
-											"    pm.expect(tokenCookie).to.not.be.undefined;",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"email\": \"jerry@example.com\",\n    \"password\": \"testpassword\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/login",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"login"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get all invitations from event",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(invitation) {",
-											"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
-											"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/events/1/invitations",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"events",
-										"1",
-										"invitations"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Get all invitations for user",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
-											"    responseData.data.forEach(function(invitation) {",
-											"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
-											"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
-											"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/invitations",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Create new invitation from event",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 200\", function () {",
-											"  pm.response.to.have.status(200);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"pm.test(\"Validate the schema of the response body\", function () {",
-											"    const responseData = pm.response.json();",
-											"    ",
-											"    // Check if the response is an object",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    ",
-											"    // Check if response contains invitation_id and that it is a number",
-											"    pm.expect(responseData).to.have.property('invitation_id').that.is.a('number');",
-											"    ",
-											"    // Optional: Check if invitation_id is the expected value or within a valid range",
-											"    pm.expect(responseData.invitation_id).to.be.greaterThan(0);",
-											"});",
-											"",
-											"const responseData = pm.response.json();",
-											"",
-											"// Store invitation_id as a collection variable",
-											"pm.collectionVariables.set(\"invitation_id\", responseData.invitation_id);"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"event_id\": 1,\n    \"email\": \"jerry@example.com\"\n  }",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/invitations",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update invitation from event",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"status\": \"Accepted\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations",
-										"{{invitation_id}}"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invitation from event",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 200",
-											"pm.test(\"Status code is 200\", function () {",
-											"    pm.response.to.have.status(200);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations",
-										"{{invitation_id}}"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 201 Created",
+									"pm.test(\"Status code is 201\", () => pm.response.to.have.status(201));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the registration success message",
+									"pm.test(\"Registration successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"User ID is returned\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Example User\",\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
 				},
 				{
-					"name": "Incorrect Usage",
-					"item": [
+					"name": "Login in event organizer 1",
+					"event": [
 						{
-							"name": "Create new invitation with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Status code is 400\", function () {",
-											"  pm.response.to.have.status(400);",
-											"});",
-											"",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"  pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of POST method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"event_id\": -1,\n    \"email\": \"jerry@example.com\",\n    \"status\": \"Sent\"\n  }",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/invitations",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update invitation with invalid invitation_id",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"status\": \"Accepted\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/invitations/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations",
-										"-1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Update invitation with invalid data",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 400",
-											"pm.test(\"Status code is 400\", function () {",
-											"    pm.response.to.have.status(400);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of PUT method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "PUT",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n    \"status\": \"NULL\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{base_url}}/api/invitations/1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations",
-										"1"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "Delete invalid invitation",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"// Validate HTTP status code is 404",
-											"pm.test(\"Status code is 404\", function () {",
-											"    pm.response.to.have.status(404);",
-											"});",
-											"",
-											"// Validate response time is less than 200ms",
-											"pm.test(\"Response time is less than 200ms\", function () {",
-											"    pm.expect(pm.response.responseTime).to.be.below(200);",
-											"});",
-											"",
-											"// Validate the structure and types of the response body",
-											"pm.test(\"Validate the response body of DEL method\", function () {",
-											"    const responseData = pm.response.json();",
-											"",
-											"    pm.expect(responseData).to.be.an('object');",
-											"    pm.expect(responseData).to.have.property('error').that.is.a('string');",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "DELETE",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/invitations/-1",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"invitations",
-										"-1"
-									]
-								}
-							},
-							"response": []
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
 						}
-					]
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all invitations from event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+									"    responseData.data.forEach(function(invitation) {",
+									"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
+									"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/1/invitations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"1",
+								"invitations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invite test user to existing event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    // Check if the response is an object",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    ",
+									"    // Check if response contains invitation_id and that it is a number",
+									"    pm.expect(responseData).to.have.property('invitation_id').that.is.a('number');",
+									"    ",
+									"    // Optional: Check if invitation_id is the expected value or within a valid range",
+									"    pm.expect(responseData.invitation_id).to.be.greaterThan(0);",
+									"});",
+									"",
+									"const responseData = pm.response.json();",
+									"",
+									"// Store invitation_id as a collection variable",
+									"pm.collectionVariables.set(\"invitation_id\", responseData.invitation_id);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"event_id\": 1,\n    \"email\": \"example@example.com\"\n  }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/invitations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"invitations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout of event organizer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Test for successful logout",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData.message).to.eql(\"Logged out successfully\");",
+									"});",
+									"",
+									"// Test that the cookie was cleared",
+									"pm.test(\"Token cookie should be cleared\", function () {",
+									"    const cookies = pm.cookies;",
+									"    pm.expect(cookies.has('token')).to.be.false;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in invited",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"example@example.com\",\n    \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all invitations for user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"  pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"  pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"pm.test(\"Validate the schema of the response body\", function () {",
+									"    const responseData = pm.response.json();",
+									"    ",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('data').that.is.an('array');",
+									"    responseData.data.forEach(function(invitation) {",
+									"        pm.expect(invitation).to.have.property('invitation_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('event_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('user_id').that.is.a('number');",
+									"        pm.expect(invitation).to.have.property('sent_date').that.is.a('string');",
+									"        pm.expect(invitation).to.have.property('status').that.is.a('string');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/invitations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"invitations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update invitation from event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validate HTTP status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Validate response time is less than 200ms",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"// Validate the structure and types of the response body",
+									"pm.test(\"Validate the response body of PUT method\", function () {",
+									"    const responseData = pm.response.json();",
+									"",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"Accepted\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"invitations",
+								"{{invitation_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete invitation from event",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Validate HTTP status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Validate response time is less than 200ms",
+									"pm.test(\"Response time is less than 200ms\", function () {",
+									"    pm.expect(pm.response.responseTime).to.be.below(200);",
+									"});",
+									"",
+									"// Validate the structure and types of the response body",
+									"pm.test(\"Validate the response body of DEL method\", function () {",
+									"    const responseData = pm.response.json();",
+									"",
+									"    pm.expect(responseData).to.be.an('object');",
+									"    pm.expect(responseData).to.have.property('message').that.is.a('string');",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/invitations/{{invitation_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"invitations",
+								"{{invitation_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -4294,7 +3729,7 @@
 					]
 				},
 				{
-					"name": "Other",
+					"name": "Basic User Action",
 					"item": [
 						{
 							"name": "Create new test user",
@@ -5301,10 +4736,6 @@
 		},
 		{
 			"key": "availability_id",
-			"value": ""
-		},
-		{
-			"key": "venue_id",
 			"value": ""
 		}
 	]
