@@ -53,7 +53,7 @@ function LandingPage() {
 		padding: '0 1rem ',
 		backgroundColor: '#34495e',
 		borderRadius: '0.5rem',
-		boxShadow: '0 0.5rem 1rem rgba(0, 0, 0, 0.1)',
+		boxShadow: '0 0.5rem 0.5rem rgba(0, 0, 0, 0.1)',
 		maxHeight: '0',
 		overflow: 'hidden',
 		transition: 'max-height 0.3s ease-out',
@@ -115,6 +115,8 @@ function LandingPage() {
 					)}
 				</div>
 			</nav>
+			{/* HERO */}
+			
 		</>
 	);
 }
