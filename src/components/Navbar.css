@@ -1,0 +1,69 @@
+/* Navbar Styles */
+.navbar {
+	background-color: #34495e;
+	color: white;
+	padding: 1rem;
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 1000;
+	display: flex;
+	justify-content: center;
+}
+
+/* Navbar Container */
+.navbar-container {
+	max-width: 1200px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
+}
+
+/* Link Container */
+.link-container {
+	max-width: 600px;
+	margin: auto;
+	display: flex;
+	justify-content: space-evenly;
+}
+
+/* Logo Style */
+.logo {
+	color: white;
+	font-size: 2rem;
+	font-weight: bold;
+	text-decoration: none;
+	margin-right: 2rem;
+	white-space: nowrap;
+}
+
+/* Navbar Link Style */
+.nav-link {
+	color: white;
+	text-decoration: none;
+	padding: 0.5rem 1rem;
+	margin-right: 1.5rem;
+	white-space: nowrap;
+}
+
+/* Dropdown Menu Style */
+.dropdown-menu {
+	position: absolute;
+	top: 4.5rem;
+	right: 1rem;
+	padding: 0 1rem;
+	background-color: #34495e;
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.1);
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out;
+	display: flex;
+	flex-direction: column;
+}
+
+.dropdown-menu.open {
+	max-height: 200px;
+	/* Adjust based on content height */
+}
