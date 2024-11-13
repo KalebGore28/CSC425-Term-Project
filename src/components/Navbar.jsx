@@ -1,3 +1,5 @@
+//  src/components/Navbar.jsx
+
 import React, { useState, useEffect } from 'react';
 import './Navbar.css';
 
