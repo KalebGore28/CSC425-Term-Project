@@ -19,7 +19,10 @@ const secretKey = process.env.JWT_SECRET_KEY;
 const saltRounds = 10; // Define the salt rounds for bcrypt
 
 // --- MIDDLEWARE ---
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 

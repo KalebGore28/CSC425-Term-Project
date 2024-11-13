@@ -2,7 +2,7 @@
 
 /* Navbar Styles */
 .navbar {
-	background-color: #34495e;
+	background-color: #2e887e;
 	color: white;
 	padding: 1rem;
 	position: fixed;
@@ -55,7 +55,7 @@
 	top: 4.5rem;
 	right: 1rem;
 	padding: 0 1rem;
-	background-color: #34495e;
+	background-color: #2e887e;
 	border-radius: 0.5rem;
 	box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.1);
 	max-height: 0;
@@ -68,4 +68,90 @@
 .dropdown-menu.open {
 	max-height: 200px;
 	/* Adjust based on content height */
+}
+
+/* Modal overlay */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1001;
+}
+
+/* Modal content */
+.modal-content {
+	background: white;
+	padding: 2rem;
+	border-radius: 8px;
+	width: 90%;
+	max-width: 400px;
+	position: relative;
+	text-align: center;
+}
+
+/* Close button */
+.close-button {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	background: transparent;
+	border: none;
+	font-size: 1.5rem;
+	cursor: pointer;
+}
+
+/* Form styles */
+.modal-content form {
+	display: flex;
+	flex-direction: column;
+}
+
+.modal-content form label {
+	margin: 1rem 0 0.5rem;
+}
+
+.modal-content form input {
+	padding: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.modal-content form button {
+	padding: 0.75rem;
+	background-color: #2e887e;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+/* Style for the toggle link */
+.toggle-link {
+	color: #34db47;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.toggle-link:hover {
+	color: #84b929;
+}
+
+.user-circle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 35px;
+	height: 35px;
+	background-color: #59caa6;
+	color: white;
+	font-weight: bold;
+	font-size: 1.2rem;
+	border-radius: 50%;
+	cursor: pointer;
+	margin-right: 2rem;
 }
