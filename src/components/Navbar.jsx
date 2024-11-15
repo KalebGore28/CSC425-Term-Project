@@ -10,7 +10,8 @@ function Navbar() {
 	const [isRegistering, setIsRegistering] = useState(false);
 	const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
 	const [error, setError] = useState('');
-	const [user, setUser] = useState(null); // State to store logged-in user info
+	const [user, setUser] = useState(null);
+	const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
 	useEffect(() => {
 		const handleResize = () => setWindowWidth(window.innerWidth);
@@ -50,6 +51,30 @@ function Navbar() {
 	const toggleRegister = () => {
 		setIsRegistering(!isRegistering);
 		setError('');
+	};
+
+	const toggleProfileMenu = () => setIsProfileMenuOpen(!isProfileMenuOpen); // Toggle profile menu
+
+	const handleLogout = async () => {
+		try {
+			const response = await fetch('http://localhost:5001/api/logout', {
+				method: 'POST',
+				credentials: 'include', // Include cookies in the request
+			});
+
+			if (response.ok) {
+				alert('Logged out successfully');
+				// Optionally redirect to the login or home page
+				window.location.href = '/';
+			} else {
+				const errorData = await response.json();
+				console.error('Error logging out:', errorData.error);
+				alert('Logout failed. Please try again.');
+			}
+		} catch (error) {
+			console.error('Error during logout:', error);
+			alert('Something went wrong. Please try again.');
+		}
 	};
 
 	const handleChange = (e) => {
@@ -97,10 +122,13 @@ function Navbar() {
 			} else {
 				setUser(loginData.user); // Set user after successful login
 				closeModal();
+				//refresh the page
+				window.location.href = '/';
 			}
 		} catch (err) {
 			setError('Something went wrong. Please try again later.');
 		}
+
 	};
 
 	return (
@@ -117,9 +145,16 @@ function Navbar() {
 								<a href="/new-venue" className="nav-link">List a Venue</a>
 							</div>
 							{user ? (
-								// Render user's initial if logged in
-								<div className="user-circle">
-									{user.name.charAt(0).toUpperCase()}
+								<div className="user-profile">
+									<div className="user-circle" onClick={toggleProfileMenu}>
+										{user.name.charAt(0).toUpperCase()}
+									</div>
+									{isProfileMenuOpen && (
+										<div className="profile-menu">
+											<a href="/profile" className="profile-link">My Profile</a>
+											<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
+										</div>
+									)}
 								</div>
 							) : (
 								<a onClick={openModal} className="nav-link">Sign In</a>
@@ -134,9 +169,10 @@ function Navbar() {
 								<a href="/meeting" className="nav-link">Meeting</a>
 								<a href="/new-venue" className="nav-link">List a Venue</a>
 								{user ? (
-									<a className="nav-link">
-										{user.name}
-									</a>
+									<div className="profile-menu">
+										<a href="/profile" className="profile-link">My Profile</a>
+										<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
+									</div>
 								) : (
 									<a onClick={openModal} className="nav-link">Sign In</a>
 								)}

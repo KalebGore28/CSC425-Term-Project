@@ -155,3 +155,29 @@
 	cursor: pointer;
 	margin-right: 2rem;
 }
+
+/* Profile Menu */
+.profile-menu {
+	position: absolute;
+	top: 4.5rem;
+	right: 1rem;
+	background-color: #34495e;
+	border-radius: 5px;
+	box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+	padding: 0.5rem;
+	width: 150px;
+	display: flex;
+	flex-direction: column;
+	z-index: 1000;
+}
+
+.profile-link {
+	color: white;
+	padding: 0.5rem 1rem;
+	text-decoration: none;
+	font-size: 0.9rem;
+}
+
+.profile-link:hover {
+	background-color: #2e887e;
+}
