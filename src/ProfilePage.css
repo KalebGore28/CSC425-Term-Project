@@ -1,0 +1,140 @@
+/* src/ProfilePage.css */
+
+/* General container styling for the profile page */
+.profile-page {
+	max-width: 800px;
+	margin: 2rem auto;
+	padding: 1rem;
+	font-family: Arial, sans-serif;
+	background-color: #f9f9f9;
+	border-radius: 10px;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	position: absolute;
+	/* Positioning for vertical centering */
+	top: 50%;
+	/* Move the element to the middle of the viewport */
+	left: 50%;
+	/* Center horizontally relative to the viewport */
+	transform: translate(-50%, -50%);
+	/* Offset by half its width and height for perfect centering */
+	text-align: center;
+	/* Optional for centering content inside */
+}
+
+.profile-page h1,
+.profile-page h2 {
+	text-align: center;
+	color: #34495e;
+	margin-bottom: 1rem;
+}
+
+/* Form styling */
+.form-group {
+	margin-bottom: 1rem;
+}
+
+.form-group label {
+	display: block;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+}
+
+.form-group input {
+	width: 100%;
+	padding: 0.5rem;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	font-size: 1rem;
+	background-color: #fff;
+}
+
+.form-group input:focus {
+	outline: none;
+	border-color: #3498db;
+	box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+}
+
+/* Success and error messages */
+.success-message {
+	color: #2ecc71;
+	font-size: 0.9rem;
+	margin-top: 0.5rem;
+}
+
+.error-message {
+	color: #e74c3c;
+	font-size: 0.9rem;
+	margin-top: 0.5rem;
+}
+
+/* Button styles */
+.btn {
+	display: inline-block;
+	padding: 0.75rem 1.5rem;
+	font-size: 1rem;
+	font-weight: bold;
+	color: white;
+	background-color: #3498db;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	text-align: center;
+	transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+	background-color: #2980b9;
+}
+
+.delete-btn {
+	background-color: #e74c3c;
+}
+
+.delete-btn:hover {
+	background-color: #c0392b;
+}
+
+/* Modal styling */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+}
+
+.modal-content {
+	background-color: #fff;
+	padding: 2rem;
+	border-radius: 10px;
+	max-width: 500px;
+	text-align: center;
+	box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-content p {
+	margin-bottom: 1.5rem;
+	font-size: 1rem;
+	color: #34495e;
+}
+
+.confirm-btn {
+	background-color: #27ae60;
+}
+
+.confirm-btn:hover {
+	background-color: #219150;
+}
+
+.cancel-btn {
+	background-color: #95a5a6;
+}
+
+.cancel-btn:hover {
+	background-color: #7f8c8d;
+}
