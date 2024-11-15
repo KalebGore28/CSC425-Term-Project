@@ -136,9 +136,8 @@ function Navbar() {
 					{windowWidth > 768 ? (
 						<>
 							<div className="link-container">
-								<a href="/party" className="nav-link">Party</a>
-								<a href="/wedding" className="nav-link">Wedding</a>
-								<a href="/meeting" className="nav-link">Meeting</a>
+								<a href="/venues" className="nav-link">Explore Venues</a>
+								<a href="/events" className="nav-link">Events</a>
 								<a href="/new-venue" className="nav-link">List a Venue</a>
 							</div>
 							{currentUser ? (
@@ -159,9 +158,8 @@ function Navbar() {
 						<>
 							<a href="#" className="logo" onClick={toggleDropdownMenu}>☰</a>
 							<div className={`dropdown-menu ${isDropdownMenuOpen ? 'open' : ''}`}>
-								<a href="/party" className="nav-link">Party</a>
-								<a href="/wedding" className="nav-link">Wedding</a>
-								<a href="/meeting" className="nav-link">Meeting</a>
+								<a href="/venues" className="nav-link">Explore Venues</a>
+								<a href="/events" className="nav-link">Events</a>
 								<a href="/new-venue" className="nav-link">List a Venue</a>
 								{currentUser ? (
 									<>

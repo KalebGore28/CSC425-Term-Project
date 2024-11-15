@@ -9,6 +9,8 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
+const multer = require('multer'); // Import multer
+const path = require('path');
 
 // Import date handling utilities
 const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
@@ -40,6 +42,40 @@ function authenticateToken(req, res, next) {
     req.user = user;  // Add user information to request object
     next();
   });
+}
+
+// --- MULTER CONFIGURATION ---
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // Save files in the "uploads" folder
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+  fileFilter: function (req, file, cb) {
+    const fileTypes = /jpeg|jpg|png/; // Allowed file types
+    const extName = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimeType = fileTypes.test(file.mimetype);
+
+    if (extName && mimeType) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed (JPEG, JPG, PNG).'));
+    }
+  }
+});
+
+// Ensure the uploads directory exists
+const fs = require('fs');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
 }
 
 // Internal middleware to allow only server-originated requests
@@ -1198,6 +1234,41 @@ app.delete('/api/venues/:id', authenticateToken, (req, res) => {
     });
   });
 });
+
+// --- UPLOAD IMAGE FOR VENUE ---
+app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'), (req, res) => {
+  const { venue_id } = req.params;
+  const user_id = req.user.user_id; // Ensure the user is authenticated
+  const filePath = req.file ? `/uploads/${req.file.filename}` : null; // Save file path
+  const { image_url } = req.body; // Optional: Image URL if not uploading a file
+
+  // Validate request
+  if (!filePath && !image_url) {
+    return res.status(400).json({ error: 'An image file or image URL is required.' });
+  }
+
+  // Check if the venue exists and is owned by the user
+  db.get(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [venue_id, user_id], (err, venue) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error retrieving venue information.' });
+    }
+    if (!venue) {
+      return res.status(404).json({ error: 'Venue not found or unauthorized to add image.' });
+    }
+
+    // Update the venue with the image URL or file path
+    const imagePath = filePath || image_url;
+    db.run(`UPDATE Venues SET image_url = ? WHERE venue_id = ?`, [imagePath, venue_id], function (err) {
+      if (err) {
+        return res.status(500).json({ error: 'Error updating venue with image.' });
+      }
+      res.status(201).json({ message: 'Image uploaded successfully.', image_url: imagePath });
+    });
+  });
+});
+
+// --- STATIC FILES FOR UPLOADED IMAGES ---
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- USER_VENUE_Rentals ENDPOINTS ---
 
