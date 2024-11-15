@@ -1235,7 +1235,35 @@ app.delete('/api/venues/:id', authenticateToken, (req, res) => {
   });
 });
 
-// --- UPLOAD IMAGE FOR VENUE ---
+// Get venue images
+app.get('/api/images/:id', (req, res) => {
+  const { id } = req.params;
+  const query = `SELECT image_url FROM Images WHERE image_id = ?`; // Use image_id here
+
+  db.get(query, [id], (err, row) => {
+    if (err) {
+      console.error('Database error:', err.message);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    if (!row || !row.image_url) {
+      console.error(`No image found for image_id: ${id}`);
+      return res.status(404).json({ error: 'Image not found' });
+    }
+
+    const imagePath = path.join(__dirname, row.image_url); // Resolve full path to the image
+    console.log(`Resolved image path: ${imagePath}`); // Log the resolved image path for debugging
+
+    fs.access(imagePath, fs.constants.F_OK, (fsErr) => {
+      if (fsErr) {
+        console.error(`Image file not found on server at path: ${imagePath}`);
+        return res.status(404).json({ error: 'Image file not found on server' });
+      }
+      res.sendFile(imagePath); // Serve the image file
+    });
+  });
+});
+
+// Upload an image for a venue
 app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'), (req, res) => {
   const { venue_id } = req.params;
   const user_id = req.user.user_id; // Ensure the user is authenticated

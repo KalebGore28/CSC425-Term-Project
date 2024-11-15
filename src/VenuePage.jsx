@@ -40,7 +40,11 @@ function VenuePage() {
 					<div className="venue-list">
 						{venues.map((venue) => (
 							<div className="venue-card" key={venue.venue_id}>
-								<img src={venue.image_url} alt={venue.name} className="venue-image" />
+								<img
+									src={`http://localhost:5001/api/images/${venue.thumbnail_image_id}`}
+									alt={venue.name}
+									className="venue-image"
+								/>
 								<h2 className="venue-name">{venue.name}</h2>
 								<p className="venue-location"><strong>Location:</strong> {venue.location}</p>
 								<p className="venue-description">{venue.description}</p>
