@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import './ProfilePage.css'; // Optional for styling
+import './ProfilePage.css';
 
 function ProfilePage() {
 	const [user, setUser] = useState(null);
@@ -10,6 +10,11 @@ function ProfilePage() {
 	const [error, setError] = useState('');
 	const [success, setSuccess] = useState('');
 	const [isDeleting, setIsDeleting] = useState(false);
+
+	// Password change states
+	const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '' });
+	const [passwordError, setPasswordError] = useState('');
+	const [passwordSuccess, setPasswordSuccess] = useState('');
 
 	// Fetch user details on mount
 	useEffect(() => {
@@ -37,6 +42,11 @@ function ProfilePage() {
 		setFormData({ ...formData, [e.target.name]: e.target.value });
 	};
 
+	// Handle password input changes
+	const handlePasswordChange = (e) => {
+		setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+	};
+
 	// Handle profile updates
 	const handleUpdate = async (e) => {
 		e.preventDefault();
@@ -44,7 +54,7 @@ function ProfilePage() {
 		setSuccess('');
 
 		try {
-			const response = await fetch(`http://localhost:5001/api/users/${user.user_id}`, {
+			const response = await fetch(`http://localhost:5001/api/users/me`, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(formData),
@@ -55,6 +65,7 @@ function ProfilePage() {
 				setSuccess('Profile updated successfully.');
 				const updatedUser = await response.json();
 				setUser(updatedUser);
+				window.location.reload(); // Refresh the page to reflect changes
 			} else {
 				const errorData = await response.json();
 				setError(errorData.error || 'Failed to update profile.');
@@ -64,10 +75,36 @@ function ProfilePage() {
 		}
 	};
 
+	// Handle password updates
+	const handlePasswordUpdate = async (e) => {
+		e.preventDefault();
+		setPasswordError('');
+		setPasswordSuccess('');
+
+		try {
+			const response = await fetch(`http://localhost:5001/api/users/me/password`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(passwordData),
+				credentials: 'include',
+			});
+
+			if (response.ok) {
+				setPasswordSuccess('Password updated successfully.');
+				setPasswordData({ oldPassword: '', newPassword: '' }); // Reset fields
+			} else {
+				const errorData = await response.json();
+				setPasswordError(errorData.error || 'Failed to update password.');
+			}
+		} catch (err) {
+			setPasswordError('Error updating password.');
+		}
+	};
+
 	// Handle account deletion
 	const handleDelete = async () => {
 		try {
-			const response = await fetch(`http://localhost:5001/api/users/${user.user_id}`, {
+			const response = await fetch(`http://localhost:5001/api/users/me`, {
 				method: 'DELETE',
 				credentials: 'include',
 			});
@@ -122,6 +159,40 @@ function ProfilePage() {
 						<button type="submit" className="btn">Save Changes</button>
 					</form>
 				)}
+
+				{/* Password Change Section */}
+				<div className="password-section">
+					<h2>Change Password</h2>
+					<form onSubmit={handlePasswordUpdate}>
+						<div className="form-group">
+							<label>Old Password:</label>
+							<input
+								type="password"
+								name="oldPassword"
+								value={passwordData.oldPassword}
+								onChange={handlePasswordChange}
+								required
+							/>
+						</div>
+
+						<div className="form-group">
+							<label>New Password:</label>
+							<input
+								type="password"
+								name="newPassword"
+								value={passwordData.newPassword}
+								onChange={handlePasswordChange}
+								required
+							/>
+						</div>
+
+						{/* Success/Error Messages */}
+						{passwordSuccess && <p className="success-message">{passwordSuccess}</p>}
+						{passwordError && <p className="error-message">{passwordError}</p>}
+
+						<button type="submit" className="btn">Change Password</button>
+					</form>
+				</div>
 
 				{/* Account Settings */}
 				<div className="account-settings">
