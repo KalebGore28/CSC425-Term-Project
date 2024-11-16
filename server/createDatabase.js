@@ -53,8 +53,8 @@ db.serialize(() => {
     organizer_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
-    event_date_start TEXT NOT NULL,
-    event_date_end TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE,
     FOREIGN KEY (organizer_id) REFERENCES Users(user_id) ON DELETE CASCADE

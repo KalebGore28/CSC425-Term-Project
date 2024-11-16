@@ -138,11 +138,14 @@ const validateDateRange = (start_date, end_date) => {
   const start = parseISO(start_date);
   const end = parseISO(end_date);
 
-  if (isBefore(start, today) || isBefore(end, today)) {
-    throw new Error("Event dates cannot be in the past.");
+  if (isBefore(start, today)) {
+    throw new Error("Start date cannot be in the past.");
+  }
+  if (isBefore(end, today)) {
+    throw new Error("End date cannot be in the past.");
   }
   if (isAfter(start, end)) {
-    throw new Error("End date cannot be before start date.");
+    throw new Error("Start date cannot be after the end date.");
   }
 
   return { start, end };
@@ -153,9 +156,13 @@ const checkOverlap = (start, end, rentals) => {
     const rentalStart = parseISO(rental.start_date);
     const rentalEnd = parseISO(rental.end_date);
 
+    if (isNaN(rentalStart) || isNaN(rentalEnd)) {
+      console.error("Invalid date in rental:", rental);
+    }
+
     return (
       (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-      (isEqual(start, rentalStart) || isEqual(end, rentalEnd))
+      isEqual(start, rentalStart) || isEqual(end, rentalEnd)
     );
   });
 };
@@ -170,6 +177,18 @@ const validateVenueFields = ({ name, location, description, capacity, price }) =
   if (typeof price !== 'number' || price <= 0) {
     throw new Error("Price must be a positive number.");
   }
+};
+
+const validateRegistrationInput = ({ name, email, password }) => {
+  if (!name || !email || !password) {
+    throw new Error("All fields (name, email, password) are required.");
+  }
+
+  if (!/^[a-zA-Z\s]+$/.test(name)) {
+    throw new Error("Name can only contain alphabetic characters and spaces.");
+  }
+
+  return true;
 };
 
 // Authorizers
@@ -225,6 +244,20 @@ const verifyInvitationAccess = async (invitationId, userId) => {
   const isOrganizer = invitation.organizer_id === userId;
 
   return { isRecipient, isOrganizer };
+};
+
+// Others
+const hashPassword = async (password) => {
+  return await bcrypt.hash(password, saltRounds);
+};
+
+// Helper function: Generate JWT token
+const generateToken = (user) => {
+  return jwt.sign(
+    { user_id: user.user_id, email: user.email },
+    secretKey,
+    { expiresIn: '1h' }
+  );
 };
 
 
@@ -395,7 +428,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
       }
 
       await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
         [venue_id, userId, name, description, start_date, end_date]
       );
 
@@ -407,7 +440,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
       }
 
       await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
         [venue_id, userId, name, description, rental.start_date, rental.end_date]
       );
     }
@@ -424,18 +457,18 @@ app.post('/api/events', authenticateToken, async (req, res) => {
 // Update event information
 app.put('/api/events/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const { name, description, event_date_start, event_date_end } = req.body;
+  const { name, description, start_date, end_date } = req.body;
   const userId = req.user.user_id;
 
   try {
     const { isOrganizer, isOwner, event } = await checkEventAccess(id, userId);
 
-    if (isOrganizer && !isOwner && (event_date_start || event_date_end)) {
+    if (isOrganizer && !isOwner && (start_date || end_date)) {
       throw new Error("Renters cannot update event dates.");
     }
 
-    if (isOwner && event_date_start && event_date_end) {
-      const { start, end } = validateDateRange(event_date_start, event_date_end);
+    if (isOwner && start_date && end_date) {
+      const { start, end } = validateDateRange(start_date, end_date);
       const rentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`, [event.venue_id, userId]);
 
       if (checkOverlap(start, end, rentals)) {
@@ -443,8 +476,8 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
       }
 
       await runDbQuery(
-        `UPDATE Events SET name = ?, description = ?, event_date_start = ?, event_date_end = ? WHERE event_id = ?`,
-        [name, description, event_date_start, event_date_end, id]
+        `UPDATE Events SET name = ?, description = ?, start_date = ?, end_date = ? WHERE event_id = ?`,
+        [name, description, start_date, end_date, id]
       );
     } else {
       await runDbQuery(
@@ -592,7 +625,7 @@ app.put('/api/invitations/:id', authenticateToken, async (req, res) => {
 
   try {
     const invitation = await getDbRow(
-      `SELECT I.user_id, E.event_date_start, V.capacity 
+      `SELECT I.user_id, E.start_date, V.capacity 
        FROM Invitations AS I 
        JOIN Events AS E ON I.event_id = E.event_id 
        JOIN Venues AS V ON E.venue_id = V.venue_id 
@@ -605,7 +638,7 @@ app.put('/api/invitations/:id', authenticateToken, async (req, res) => {
 
     if (status === "Accepted") {
       const today = new Date();
-      if (new Date(invitation.event_date_start) < today) {
+      if (new Date(invitation.start_date) < today) {
         throw new Error("Cannot accept invitation. The event has already occurred.");
       }
 
@@ -651,7 +684,7 @@ app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- NOTIFICATIONS ENDPOINTS ---
+// --- NOTIFICATIONS ENDPOINTS --- (don't have tests for these)
 
 // Get all notifications for the authenticated user
 app.get('/api/notifications', authenticateToken, async (req, res) => {
@@ -740,211 +773,209 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- USERS ENDPOINTS ---
+// --- USERS ENDPOINTS --- ✅
 
 // Register a new user
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
   const { name, email, password } = req.body;
 
-  // Check for missing fields
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: "All fields (name, email, password) are required." });
-  }
+  try {
+    // Validate input
+    validateRegistrationInput({ name, email, password });
 
-  // Check if the name contains only letters and spaces
-  if (!/^[a-zA-Z\s]+$/.test(name)) {
-    return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
-  }
-
-  // Check if the email already exists in the database
-  db.get(`SELECT email FROM Users WHERE email = ?`, [email], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: "Error checking email uniqueness" });
-    }
-    if (row) {
-      return res.status(400).json({ error: "Email already registered. Please use a different email." });
+    // Check if email already exists
+    const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
+    if (existingUser) {
+      throw new Error("Email already registered. Please use a different email.");
     }
 
     // Hash the password
-    bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
-      if (err) {
-        return res.status(500).json({ error: "Error hashing password" });
-      }
+    const hashedPassword = await hashPassword(password);
 
-      // Insert the user with the hashed password
-      db.run(
-        `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-        [name, email, hashedPassword],
-        function (err) {
-          if (err) {
-            return res.status(500).json({ error: "User registration failed" });
-          }
-          res.status(201).json({ message: "User registered successfully", user_id: this.lastID });
-        }
-      );
-    });
-  });
+    // Insert user into the database
+    const userId = await runDbQuery(
+      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+      [name, email, hashedPassword]
+    );
+
+    res.status(201).json({ message: "User registered successfully", user_id: userId });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Login
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
 
-  // Check for missing fields
-  if (!email || !password) {
-    return res.status(400).json({ error: "Both email and password are required" });
-  }
+  try {
+    // Validate input
+    if (!email || !password) {
+      throw new Error("Both email and password are required.");
+    }
 
-  // Retrieve the user by email
-  db.get(`SELECT * FROM Users WHERE email = ?`, [email], (err, user) => {
-    if (err) return res.status(500).json({ error: "Error retrieving user" });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    // Retrieve the user by email
+    const user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
+    if (!user) {
+      throw new Error("User not found.");
+    }
 
     // Compare the provided password with the stored hashed password
-    bcrypt.compare(password, user.password, (err, isMatch) => {
-      if (err) return res.status(500).json({ error: "Error comparing passwords" });
-      if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new Error("Invalid credentials.");
+    }
 
-      // Generate a JWT token
-      const token = jwt.sign(
-        { user_id: user.user_id, email: user.email },
-        secretKey,
-        { expiresIn: '1h' }
-      );
+    // Generate a JWT token
+    const token = generateToken(user);
 
-      // Set the token as an HTTP-only cookie
-      res.cookie("token", token, {
-        httpOnly: true,                    // Prevents JavaScript access
-        secure: process.env.NODE_ENV === "production",  // Ensures HTTPS in production
-        sameSite: "Strict",                 // Prevents CSRF attacks
-        maxAge: 3600000                     // 1 hour expiration
-      });
-
-      // Send success response without token in JSON
-      res.json({ message: "Login successful" });
+    // Set the token as an HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Ensure HTTPS in production
+      sameSite: "Strict", // Prevent CSRF attacks
+      maxAge: 3600000, // 1 hour expiration
     });
-  });
+
+    res.json({ message: "Login successful" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Logout (clear cookie)
 app.post('/api/logout', authenticateToken, (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "Strict"
-  });
-  res.json({ message: "Logged out successfully" });
+  try {
+    // Clear the authentication token cookie
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // Ensures HTTPS in production
+      sameSite: "Strict" // Prevents CSRF attacks
+    });
+
+    // Send a success response
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    // Catch unexpected errors
+    res.status(500).json({ error: "An error occurred during logout" });
+  }
 });
 
 // Get current user profile
-app.get('/api/users/me', authenticateToken, (req, res) => {
+app.get('/api/users/me', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
-  db.get(`SELECT user_id, name, email, created_at FROM Users WHERE user_id = ?`, [userId], (err, user) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving user profile" });
-    }
+  try {
+    const user = await getDbRow(
+      `SELECT user_id, name, email, created_at FROM Users WHERE user_id = ?`,
+      [userId]
+    );
+
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
+
     res.json(user);
-  });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving user profile" });
+  }
 });
 
 // Update current user profile
-app.put('/api/users/me', authenticateToken, (req, res) => {
+app.put('/api/users/me', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { name, email } = req.body;
 
-  // Check for missing fields
-  if (!name || !email) {
-    return res.status(400).json({ error: "Both name and email are required" });
-  }
-
-  // Check if the name contains only letters and spaces
-  if (!/^[a-zA-Z\s]+$/.test(name)) {
-    return res.status(400).json({ error: "Name can only contain alphabetic characters and spaces." });
-  }
-
-  db.run(`UPDATE Users SET name = ?, email = ? WHERE user_id = ?`, [name, email, userId], function (err) {
-    if (err) {
-      if (err.code === 'SQLITE_CONSTRAINT') {
-        return res.status(400).json({ error: "Email already in use. Please choose a different email." });
-      }
-      return res.status(500).json({ error: "Error updating user profile" });
+  try {
+    // Validate input
+    if (!name || !email) {
+      throw new Error("Both name and email are required");
     }
-    if (this.changes === 0) {
+
+    if (!/^[a-zA-Z\s]+$/.test(name)) {
+      throw new Error("Name can only contain alphabetic characters and spaces.");
+    }
+
+    // Update the user profile
+    const changes = await runDbQuery(
+      `UPDATE Users SET name = ?, email = ? WHERE user_id = ?`,
+      [name, email, userId]
+    );
+
+    if (changes === 0) {
       return res.status(404).json({ error: "User not found or no changes made" });
     }
+
     res.json({ message: "User profile updated successfully" });
-  });
+  } catch (error) {
+    if (error.code === "SQLITE_CONSTRAINT") {
+      res.status(400).json({ error: "Email already in use. Please choose a different email." });
+    } else {
+      res.status(400).json({ error: error.message });
+    }
+  }
 });
 
 // Change password
-app.put('/api/users/me/password', authenticateToken, (req, res) => {
+app.put('/api/users/me/password', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { oldPassword, newPassword } = req.body;
 
-  // Check for missing fields
-  if (!oldPassword || !newPassword) {
-    return res.status(400).json({ error: "Both oldPassword and newPassword are required" });
-  }
-
-  db.get(`SELECT password FROM Users WHERE user_id = ?`, [userId], (err, user) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving user information" });
+  try {
+    // Validate input
+    if (!oldPassword || !newPassword) {
+      throw new Error("Both oldPassword and newPassword are required");
     }
+
+    // Retrieve user and compare old password
+    const user = await getDbRow(`SELECT password FROM Users WHERE user_id = ?`, [userId]);
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      throw new Error("User not found");
     }
 
-    // Compare old password with stored hash
-    bcrypt.compare(oldPassword, user.password, (err, isMatch) => {
-      if (err || !isMatch) {
-        return res.status(400).json({ error: "Old password is incorrect" });
-      }
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      throw new Error("Old password is incorrect");
+    }
 
-      // Hash new password and update
-      bcrypt.hash(newPassword, saltRounds, (err, hashedPassword) => {
-        if (err) {
-          return res.status(500).json({ error: "Error hashing new password" });
-        }
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-        db.run(`UPDATE Users SET password = ? WHERE user_id = ?`, [hashedPassword, userId], function (err) {
-          if (err) {
-            return res.status(500).json({ error: "Error updating password" });
-          }
-          res.json({ message: "Password updated successfully" });
-        });
-      });
-    });
-  });
+    // Update the password in the database
+    const changes = await runDbQuery(`UPDATE Users SET password = ? WHERE user_id = ?`, [hashedPassword, userId]);
+    if (changes === 0) {
+      throw new Error("Password update failed");
+    }
+
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete user account
-app.delete('/api/users/me', authenticateToken, (req, res) => {
+app.delete('/api/users/me', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
-  // Delete the user from the Users table
-  db.run(`DELETE FROM Users WHERE user_id = ?`, [userId], function (err) {
-    if (err) {
-      return res.status(500).json({ error: "Error deleting user account" });
+  try {
+    // Delete user from the database
+    const changes = await runDbQuery(`DELETE FROM Users WHERE user_id = ?`, [userId]);
+
+    if (changes === 0) {
+      throw new Error("User not found");
     }
 
-    // Check if a user was actually deleted
-    if (this.changes === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    // Clear the authentication cookie upon successful deletion
+    // Clear authentication token
     res.clearCookie("token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "Strict"
+      sameSite: "Strict",
     });
 
     res.json({ message: "User account deleted successfully" });
-  });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // --- VENUES ENDPOINTS --- ✅
@@ -1044,60 +1075,66 @@ app.delete('/api/venues/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// --- VENUE IMAGES ENDPOINTS --- 
+
 // Get venue images
-app.get('/api/images/:id', (req, res) => {
+app.get('/api/images/:id', async (req, res) => {
   const { id } = req.params;
-  const query = `SELECT image_url FROM Images WHERE image_id = ?`; // Use image_id here
 
-  db.get(query, [id], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: 'Internal server error' });
-    }
+  try {
+    // Fetch the image URL from the database
+    const row = await getDbRow(`SELECT image_url FROM Images WHERE image_id = ?`, [id]);
     if (!row || !row.image_url) {
-      return res.status(404).json({ error: 'Image not found' });
+      throw new Error("Image not found");
     }
 
-    const imagePath = path.join(__dirname, row.image_url); // Resolve full path to the image
+    const imagePath = path.resolve(__dirname, row.image_url);
 
-    fs.access(imagePath, fs.constants.F_OK, (fsErr) => {
-      if (fsErr) {
-        return res.status(404).json({ error: 'Image file not found on server' });
-      }
-      res.sendFile(imagePath); // Serve the image file
-    });
-  });
+    // Check if the file exists
+    if (!fs.existsSync(imagePath)) {
+      throw new Error("Image file not found on server");
+    }
+
+    // Serve the image file
+    res.sendFile(imagePath);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Upload an image for a venue
-app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'), (req, res) => {
+app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'), async (req, res) => {
   const { venue_id } = req.params;
-  const user_id = req.user.user_id; // Ensure the user is authenticated
-  const filePath = req.file ? `/uploads/${req.file.filename}` : null; // Save file path
-  const { image_url } = req.body; // Optional: Image URL if not uploading a file
+  const user_id = req.user.user_id;
+  const filePath = req.file ? `/uploads/${req.file.filename}` : null;
+  const { image_url } = req.body;
 
-  // Validate request
-  if (!filePath && !image_url) {
-    return res.status(400).json({ error: 'An image file or image URL is required.' });
-  }
-
-  // Check if the venue exists and is owned by the user
-  db.get(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [venue_id, user_id], (err, venue) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error retrieving venue information.' });
+  try {
+    // Validate the request payload
+    if (!filePath && !image_url) {
+      throw new Error("An image file or image URL is required.");
     }
+
+    // Check if the venue exists and is owned by the user
+    const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [venue_id, user_id]);
     if (!venue) {
-      return res.status(404).json({ error: 'Venue not found or unauthorized to add image.' });
+      throw new Error("Venue not found or unauthorized to add image.");
     }
 
-    // Update the venue with the image URL or file path
+    // Use the uploaded file path or provided image URL
     const imagePath = filePath || image_url;
-    db.run(`UPDATE Venues SET image_url = ? WHERE venue_id = ?`, [imagePath, venue_id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: 'Error updating venue with image.' });
-      }
-      res.status(201).json({ message: 'Image uploaded successfully.', image_url: imagePath });
+
+    // Insert the image into the database
+    const image_id = await runDbQuery(`INSERT INTO Images (venue_id, image_url) VALUES (?, ?)`, [venue_id, imagePath]);
+
+    res.status(201).json({
+      message: "Image uploaded successfully.",
+      image_id,
+      image_url: imagePath,
     });
-  });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // --- STATIC FILES FOR UPLOADED IMAGES ---
@@ -1106,236 +1143,131 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // --- USER_VENUE_Rentals ENDPOINTS ---
 
 // Get all user_venue_rentals
-app.get('/api/venue_rentals', (req, res) => {
-  db.all('SELECT * FROM Venue_Rentals', [], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json({ data: rows });
-  });
+app.get('/api/venue_rentals', async (req, res) => {
+  try {
+    const rentals = await queryDb('SELECT * FROM Venue_Rentals');
+    res.json({ data: rentals });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Create a new venue rental with event conflict check
-app.post('/api/venue_rentals', authenticateToken, (req, res) => {
+app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { venue_id, start_date, end_date } = req.body;
 
-  // Regex to validate date format 'YYYY-MM-DD'
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
-    return res.status(400).json({ error: "Dates must be in 'YYYY-MM-DD' format." });
-  }
-
-  // Parse dates and validate range
-  const start = parseISO(start_date);
-  const end = parseISO(end_date);
-  const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
-
-  // Step 1: Check for conflicts with owner-created events in the Events table
-  db.all(
-    `SELECT event_date_start, event_date_end FROM Events WHERE venue_id = ?`,
-    [venue_id],
-    (err, events) => {
-      if (err) {
-        return res.status(500).json({ error: "Error checking for conflicting events" });
-      }
-
-      const hasEventConflict = events.some(event => {
-        const eventStart = parseISO(event.event_date_start);
-        const eventEnd = parseISO(event.event_date_end);
-
-        // Check for overlap between event and rental dates
-        return (
-          (isBefore(start, eventEnd) && isAfter(end, eventStart)) ||
-          isEqual(start, eventStart) || isEqual(end, eventEnd)
-        );
-      });
-
-      if (hasEventConflict) {
-        return res.status(400).json({ error: "Cannot book venue due to a scheduled event conflict" });
-      }
-
-      // Step 2: Check for available dates in Available_Dates table
-      const placeholders = rentalDates.map(() => '?').join(',');
-      const availabilityQuery = `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`;
-
-      db.all(availabilityQuery, [venue_id, ...rentalDates], (err, rows) => {
-        if (err) {
-          return res.status(400).json({ error: "Error retrieving available dates" });
-        }
-
-        const availableDates = rows.map(row => row.available_date);
-        const unavailableDates = rentalDates.filter(date => !availableDates.includes(date));
-
-        if (unavailableDates.length > 0) {
-          return res.status(400).json({ error: "One or more dates in the range are not available", unavailable_dates: unavailableDates });
-        }
-
-        // Step 3: Check for overlapping rentals in Venue_Rentals table
-        db.all(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id], (err, existingRentals) => {
-          if (err) {
-            return res.status(400).json({ error: "Error checking for existing rentals" });
-          }
-
-          const hasOverlap = existingRentals.some(rental => {
-            const rentalStart = parseISO(rental.start_date);
-            const rentalEnd = parseISO(rental.end_date);
-            return (
-              (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-              isEqual(start, rentalStart) || isEqual(end, rentalEnd)
-            );
-          });
-
-          if (hasOverlap) {
-            return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
-          }
-
-          // Step 4: If no conflicts, add the rental
-          db.run(
-            `INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
-            [userId, venue_id, start_date, end_date],
-            function (err) {
-              if (err) {
-                return res.status(400).json({ error: err.message });
-              }
-              res.status(201).json({ rental_id: this.lastID, message: "Rental created successfully" });
-            }
-          );
-        });
-      });
+  try {
+    // Validate input
+    if (!venue_id || !start_date || !end_date) {
+      throw new Error("Venue ID, start_date, and end_date are required.");
     }
-  );
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
+      throw new Error("Dates must be in 'YYYY-MM-DD' format.");
+    }
+
+    // Parse and validate date range
+    const { start, end } = validateDateRange(start_date, end_date);
+    const rentalDates = eachDayOfInterval({ start, end }).map(date => format(date, 'yyyy-MM-dd'));
+
+    // Check for conflicts with events
+    const events = await queryDb(`SELECT start_date, end_date FROM Events WHERE venue_id = ?`, [venue_id]);
+
+    if (checkOverlap(start, end, events)) {
+      throw new Error("Cannot book venue due to a scheduled event conflict.");
+    }
+
+    // Check for available dates
+    const placeholders = rentalDates.map(() => '?').join(',');
+    const availableDates = await queryDb(
+      `SELECT available_date FROM Available_Dates WHERE venue_id = ? AND available_date IN (${placeholders})`,
+      [venue_id, ...rentalDates]
+    );
+    const unavailableDates = rentalDates.filter(date => !availableDates.some(row => row.available_date === date));
+    if (unavailableDates.length > 0) {
+      throw new Error(`One or more dates in the range are not available: ${unavailableDates.join(', ')}`);
+    }
+
+    // Check for overlapping rentals
+    const existingRentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id]);
+
+    if (checkOverlap(start, end, existingRentals)) {
+      throw new Error("The selected date range overlaps with an existing rental.");
+    }
+
+    // Insert rental into the database
+    const rentalId = await runDbQuery(
+      `INSERT INTO Venue_Rentals (user_id, venue_id, start_date, end_date) VALUES (?, ?, ?, ?)`,
+      [userId, venue_id, start_date, end_date]
+    );
+
+    res.status(201).json({ rental_id: rentalId, message: "Rental created successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Update a venue rental
-app.put('/api/venue_rentals/:id', authenticateToken, (req, res) => {
+app.put('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { start_date, end_date } = req.body;
   const userId = req.user.user_id;
 
-  // Check if start_date and end_date are provided
-  if (!start_date || !end_date) {
-    return res.status(400).json({ error: "Both start_date and end_date are required." });
-  }
+  try {
+    // Validate input
+    const { start, end } = validateDateRange(start_date, end_date);
 
-  // Validate date format (YYYY-MM-DD)
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
-    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
-  }
+    // Check if the rental belongs to the user
+    const rental = await getDbRow(`SELECT venue_id FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId]);
+    if (!rental) throw new Error("Rental not found or you don't have permission to edit this rental.");
 
-  // Ensure start_date is not after end_date
-  const start = parseISO(start_date);
-  const end = parseISO(end_date);
-  if (isAfter(start, end)) {
-    return res.status(400).json({ error: "start_date cannot be after end_date." });
-  }
-
-  // Check if the user owns the rental
-  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving rental" });
-    }
-    if (!rental) {
-      return res.status(404).json({ error: "Rental not found or you don't have permission to edit this rental" });
+    // Check for event conflicts
+    const events = await queryDb(`SELECT start_date, end_date FROM Events WHERE venue_id = ?`, [rental.venue_id]);
+    if (checkOverlap(start, end, events)) {
+      throw new Error("Cannot update rental due to a scheduled event conflict.");
     }
 
-    const venue_id = rental.venue_id;
-
-    // Step 1: Check for event conflicts in the Events table
-    db.all(
-      `SELECT event_date_start, event_date_end FROM Events WHERE venue_id = ?`,
-      [venue_id],
-      (err, events) => {
-        if (err) {
-          return res.status(500).json({ error: "Error checking for conflicting events" });
-        }
-
-        const hasEventConflict = events.some(event => {
-          const eventStart = parseISO(event.event_date_start);
-          const eventEnd = parseISO(event.event_date_end);
-
-          return (
-            (isBefore(start, eventEnd) && isAfter(end, eventStart)) ||
-            isEqual(start, eventStart) || isEqual(end, eventEnd)
-          );
-        });
-
-        if (hasEventConflict) {
-          return res.status(400).json({ error: "Cannot update rental due to a scheduled event conflict" });
-        }
-
-        // Step 2: Check for overlapping rentals in Venue_Rentals table
-        db.all(
-          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND rental_id != ?`,
-          [venue_id, id],
-          (err, existingRentals) => {
-            if (err) {
-              return res.status(500).json({ error: "Error checking for existing rentals" });
-            }
-
-            const hasOverlap = existingRentals.some(rental => {
-              const rentalStart = parseISO(rental.start_date);
-              const rentalEnd = parseISO(rental.end_date);
-              return (
-                (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-                isEqual(start, rentalStart) || isEqual(end, rentalEnd)
-              );
-            });
-
-            if (hasOverlap) {
-              return res.status(400).json({ error: "The selected date range overlaps with an existing rental." });
-            }
-
-            // Step 3: Proceed to update the rental if no conflicts are found
-            db.run(
-              `UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`,
-              [start_date, end_date, id],
-              function (err) {
-                if (err) {
-                  return res.status(500).json({ error: "Error updating rental" });
-                }
-                if (this.changes === 0) {
-                  return res.status(400).json({ error: "No changes made" });
-                }
-                res.json({ message: "Venue rental updated successfully" });
-              }
-            );
-          }
-        );
-      }
+    // Check for overlapping rentals
+    const existingRentals = await queryDb(
+      `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND rental_id != ?`,
+      [rental.venue_id, id]
     );
-  });
+    if (checkOverlap(start, end, existingRentals)) {
+      throw new Error("The selected date range overlaps with an existing rental.");
+    }
+
+    // Update the rental
+    const changes = await runDbQuery(
+      `UPDATE Venue_Rentals SET start_date = ?, end_date = ? WHERE rental_id = ?`,
+      [start_date, end_date, id]
+    );
+
+    if (changes === 0) throw new Error("No changes made to the rental.");
+    res.json({ message: "Rental updated successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete a venue rental
-app.delete('/api/venue_rentals/:id', authenticateToken, (req, res) => {
+app.delete('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id; // Retrieve user ID from token
+  const userId = req.user.user_id;
 
-  // Check if the rental exists and belongs to the authenticated user
-  db.get(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId], (err, rental) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving rental information" });
-    }
-    if (!rental) {
-      return res.status(404).json({ error: "Rental not found or unauthorized to delete" });
-    }
+  try {
+    // Check if the rental belongs to the user
+    const rental = await getDbRow(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId]);
+    if (!rental) throw new Error("Rental not found or unauthorized to delete.");
 
-    // Proceed to delete the rental
-    db.run(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error deleting rental" });
-      }
+    // Delete the rental
+    const changes = await runDbQuery(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id]);
+    if (changes === 0) throw new Error("Rental not found.");
 
-      // Confirm the deletion
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Rental not found" });
-      }
-
-      res.json({ message: 'Rental deleted successfully' });
-    });
-  });
+    res.json({ message: "Rental deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 
