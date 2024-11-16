@@ -386,13 +386,23 @@ app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
 
 // --- EVENTS ENDPOINTS --- ✅
 
-// Get all events
+// Get all events with venue information
 app.get('/api/events', async (req, res) => {
   try {
-    const events = await queryDb('SELECT * FROM Events');
+    const events = await queryDb(`
+      SELECT 
+        Events.event_id, 
+        Events.name AS event_name, 
+        Events.description, 
+        Events.start_date, 
+        Venues.name AS venue_name, 
+        Venues.location AS venue_location
+      FROM Events
+      JOIN Venues ON Events.venue_id = Venues.venue_id
+    `);
     res.json({ data: events });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving events." });
+    res.status(500).json({ error: "Error retrieving events with venue information." });
   }
 });
 
