@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import Navbar, { NavbarContext } from './components/Navbar';
 import Calendar from 'react-calendar';
 import Slider from 'react-slick';
 import './VenueDetail.css';
@@ -15,6 +15,9 @@ function VenueDetail() {
 	const [availableDates, setAvailableDates] = useState([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
+
+	// Use NavbarContext for authentication handling
+	const { toggleAuthModal, currentUser } = useContext(NavbarContext);
 
 	// Fetch venue details and available dates
 	useEffect(() => {
@@ -56,31 +59,13 @@ function VenueDetail() {
 	const handleBackClick = () => navigate('/venues');
 
 	// Handle "Book Now" button click
-	const handleBookNow = async () => {
-		try {
-			// Check if the user is authenticated
-			const response = await fetch('http://localhost:5001/api/auth/session', {
-				credentials: 'include',
-			});
-
-			const data = await response.json();
-
-			if (data.isAuthenticated) {
-				// If authenticated, navigate to the booking page
-				navigate(`/venues/${venue_id}/booking`);
-			} else {
-				// If not authenticated, show the sign-in modal
-				const signInModal = document.getElementById('sign-in-modal');
-				if (signInModal) {
-					signInModal.style.display = 'block'; // Show the modal
-				}
-			}
-		} catch {
-			// Handle errors gracefully
-			const signInModal = document.getElementById('sign-in-modal');
-			if (signInModal) {
-				signInModal.style.display = 'block'; // Show the modal
-			}
+	const handleBookNow = () => {
+		if (!currentUser) {
+			// If not authenticated, show the sign-in modal
+			toggleAuthModal();
+		} else {
+			// If authenticated, navigate to the booking page
+			navigate(`/venues/${venue_id}/booking`);
 		}
 	};
 

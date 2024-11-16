@@ -1,9 +1,13 @@
 // src/components/Navbar.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import './Navbar.css';
 
-function Navbar() {
+// Create a Context for Navbar
+const NavbarContext = createContext();
+
+// Navbar Component
+function Navbar({ children }) {
 	// State variables
 	const [windowWidth, setWindowWidth] = useState(window.innerWidth);
 	const [isDropdownMenuOpen, setIsDropdownMenuOpen] = useState(false);
@@ -40,7 +44,7 @@ function Navbar() {
 		fetchUserInfo();
 	}, []);
 
-	// Toggle menu visibility
+	// Functions to toggle UI elements
 	const toggleDropdownMenu = () => setIsDropdownMenuOpen(!isDropdownMenuOpen);
 	const toggleAuthModal = () => setIsAuthModalOpen(!isAuthModalOpen);
 	const toggleRegistrationForm = () => setIsRegistering(!isRegistering);
@@ -60,11 +64,29 @@ function Navbar() {
 		setFormData((prevData) => ({ ...prevData, [name]: value }));
 	};
 
-	// Handle user registration and login
+	// Handle logout
+	const handleLogout = async () => {
+		try {
+			const response = await fetch('http://localhost:5001/api/logout', {
+				method: 'POST',
+				credentials: 'include',
+			});
+			if (response.ok) {
+				setCurrentUser(null);
+				alert('Logged out successfully');
+				window.location.href = '/'; // Redirect to home page
+			} else {
+				const errorData = await response.json();
+				alert(`Logout failed: ${errorData.error}`);
+			}
+		} catch (error) {
+			alert('Error during logout. Please try again.');
+		}
+	};
+
 	const handleAuthSubmit = async (event) => {
 		event.preventDefault();
 		setErrorMessage('');
-
 		try {
 			if (isRegistering) {
 				// Registration logic
@@ -107,111 +129,147 @@ function Navbar() {
 		}
 	};
 
-	// Handle logout
-	const handleLogout = async () => {
-		try {
-			const response = await fetch('http://localhost:5001/api/logout', {
-				method: 'POST',
-				credentials: 'include',
-			});
-			if (response.ok) {
-				setCurrentUser(null);
-				alert('Logged out successfully');
-				window.location.href = '/'; // Redirect to home page
-			} else {
-				const errorData = await response.json();
-				alert(`Logout failed: ${errorData.error}`);
-			}
-		} catch (error) {
-			alert('Error during logout. Please try again.');
-		}
+	// Provide context value
+	const contextValue = {
+		windowWidth,
+		isDropdownMenuOpen,
+		toggleDropdownMenu,
+		isAuthModalOpen,
+		toggleAuthModal,
+		isRegistering,
+		toggleRegistrationForm,
+		currentUser,
+		setCurrentUser,
+		isProfileMenuVisible,
+		toggleProfileMenu,
+		formData,
+		setFormData,
+		handleInputChange,
+		errorMessage,
+		setErrorMessage,
+		closeAuthModal,
+		handleLogout,
 	};
 
 	return (
-		<>
-			{/* Navbar */}
-			<nav className="navbar">
-				<div className="navbar-container">
-					<a href="/" className="logo">VenueFlow</a>
-					{windowWidth > 768 ? (
-						<>
-							<div className="link-container">
-								<a href="/venues" className="nav-link">Explore Venues</a>
-								<a href="/events" className="nav-link">Events</a>
-								<a href="/new-venue" className="nav-link">List a Venue</a>
-							</div>
-							{currentUser ? (
-								<div className="user-profile">
-									<div className="user-circle" onClick={toggleProfileMenu}>
-										{currentUser.name.charAt(0).toUpperCase()}
-									</div>
-									<div className={`profile-menu ${isProfileMenuVisible ? 'open' : ''}`}>
-										<a href="/profile" className="profile-link">My Profile</a>
-										<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
-									</div>
+		<NavbarContext.Provider value={contextValue}>
+			<>
+				{/* Navbar */}
+				<nav className="navbar">
+					<div className="navbar-container">
+						<a href="/" className="logo">VenueFlow</a>
+						{windowWidth > 768 ? (
+							<>
+								<div className="link-container">
+									<a href="/venues" className="nav-link">Explore Venues</a>
+									<a href="/events" className="nav-link">Events</a>
+									<a href="/new-venue" className="nav-link">List a Venue</a>
 								</div>
-							) : (
-								<a onClick={toggleAuthModal} className="nav-link">Sign In</a>
-							)}
-						</>
-					) : (
-						<>
-							<a href="#" className="logo" onClick={toggleDropdownMenu}>☰</a>
-							<div className={`dropdown-menu ${isDropdownMenuOpen ? 'open' : ''}`}>
-								<a href="/venues" className="nav-link">Explore Venues</a>
-								<a href="/events" className="nav-link">Events</a>
-								<a href="/new-venue" className="nav-link">List a Venue</a>
 								{currentUser ? (
-									<>
-										<a href="/profile" className="nav-link">My Profile</a>
-										<a href="#" className="nav-link" onClick={handleLogout}>Log Out</a>
-									</>
+									<div className="user-profile">
+										<div className="user-circle" onClick={toggleProfileMenu}>
+											{currentUser.name.charAt(0).toUpperCase()}
+										</div>
+										<div className={`profile-menu ${isProfileMenuVisible ? 'open' : ''}`}>
+											<a href="/profile" className="profile-link">My Profile</a>
+											<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
+										</div>
+									</div>
 								) : (
 									<a onClick={toggleAuthModal} className="nav-link">Sign In</a>
 								)}
-							</div>
-						</>
-					)}
-				</div>
-			</nav>
-
-			{/* Authentication Modal */}
-			{isAuthModalOpen && (
-				<div className="modal-overlay" onClick={closeAuthModal}>
-					<div className="modal-content" onClick={(e) => e.stopPropagation()}>
-						<button className="close-button" onClick={closeAuthModal}>✖</button>
-						<h2>{isRegistering ? 'Register' : 'Sign In'}</h2>
-						<form onSubmit={handleAuthSubmit}>
-							{isRegistering && (
-								<>
-									<label>Name:</label>
-									<input type="text" name="name" value={formData.name} onChange={handleInputChange} required />
-								</>
-							)}
-							<label>Email:</label>
-							<input type="email" name="email" value={formData.email} onChange={handleInputChange} required />
-							<label>Password:</label>
-							<input type="password" name="password" value={formData.password} onChange={handleInputChange} required />
-							{isRegistering && (
-								<>
-									<label>Confirm Password:</label>
-									<input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required />
-								</>
-							)}
-							{errorMessage && <p className="error-message">{errorMessage}</p>}
-							<button type="submit">{isRegistering ? 'Register' : 'Sign In'}</button>
-						</form>
-						<p>
-							{isRegistering ? 'Already have an account? ' : "Don't have an account? "}
-							<span className="toggle-link" onClick={toggleRegistrationForm}>
-								{isRegistering ? 'Sign in here!' : 'Register here!'}
-							</span>
-						</p>
+							</>
+						) : (
+							<>
+								<a href="#" className="logo" onClick={toggleDropdownMenu}>☰</a>
+								<div className={`dropdown-menu ${isDropdownMenuOpen ? 'open' : ''}`}>
+									<a href="/venues" className="nav-link">Explore Venues</a>
+									<a href="/events" className="nav-link">Events</a>
+									<a href="/new-venue" className="nav-link">List a Venue</a>
+									{currentUser ? (
+										<>
+											<a href="/profile" className="nav-link">My Profile</a>
+											<a href="#" className="nav-link" onClick={handleLogout}>Log Out</a>
+										</>
+									) : (
+										<a onClick={toggleAuthModal} className="nav-link">Sign In</a>
+									)}
+								</div>
+							</>
+						)}
 					</div>
-				</div>
-			)}
-		</>
+				</nav>
+
+				{/* Authentication Modal */}
+				{isAuthModalOpen && (
+					<div className="modal-overlay" onClick={closeAuthModal}>
+						<div className="modal-content" onClick={(e) => e.stopPropagation()}>
+							<button className="close-button" onClick={closeAuthModal}>✖</button>
+							<h2>{isRegistering ? 'Register' : 'Sign In'}</h2>
+							{/* Attach the handleAuthSubmit function to the form's onSubmit */}
+							<form onSubmit={handleAuthSubmit}>
+								{isRegistering && (
+									<>
+										<label>Name:</label>
+										<input
+											type="text"
+											name="name"
+											value={formData.name}
+											onChange={handleInputChange}
+											required
+										/>
+									</>
+								)}
+								<label>Email:</label>
+								<input
+									type="email"
+									name="email"
+									value={formData.email}
+									onChange={handleInputChange}
+									required
+								/>
+								<label>Password:</label>
+								<input
+									type="password"
+									name="password"
+									value={formData.password}
+									onChange={handleInputChange}
+									required
+								/>
+								{isRegistering && (
+									<>
+										<label>Confirm Password:</label>
+										<input
+											type="password"
+											name="confirmPassword"
+											value={formData.confirmPassword}
+											onChange={handleInputChange}
+											required
+										/>
+									</>
+								)}
+								{errorMessage && <p className="error-message">{errorMessage}</p>}
+								<button type="submit">{isRegistering ? 'Register' : 'Sign In'}</button>
+							</form>
+							<p>
+								{isRegistering ? 'Already have an account? ' : "Don't have an account? "}
+								<span className="toggle-link" onClick={toggleRegistrationForm}>
+									{isRegistering ? 'Sign in here!' : 'Register here!'}
+								</span>
+							</p>
+						</div>
+					</div>
+				)}
+
+				{/* Children */}
+				{children}
+			</>
+		</NavbarContext.Provider>
 	);
 }
 
+// Export the Navbar Context
+export { NavbarContext };
+
+// Default Export Navbar
 export default Navbar;

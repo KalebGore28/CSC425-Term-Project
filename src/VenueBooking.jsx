@@ -1,16 +1,39 @@
-import React, { useState, useEffect } from 'react';
+// src/VenueBooking.jsx
+
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import { NavbarContext } from './components/Navbar'; // Use Navbar context to toggle modal
 import './VenueBooking.css';
 
 function VenueBooking() {
 	const { venue_id } = useParams();
 	const navigate = useNavigate();
+	const { toggleAuthModal } = useContext(NavbarContext);
 	const [availableDates, setAvailableDates] = useState([]);
 	const [startDate, setStartDate] = useState('');
 	const [endDate, setEndDate] = useState('');
 	const [error, setError] = useState(null);
-	const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token')); // Check if user is signed in
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+	// Fetch user authentication status
+	useEffect(() => {
+		const checkAuth = async () => {
+			try {
+				const response = await fetch('http://localhost:5001/api/auth/session', {
+					credentials: 'include',
+				});
+				if (response.ok) {
+					setIsAuthenticated(true);
+				} else {
+					setIsAuthenticated(false);
+				}
+			} catch {
+				setIsAuthenticated(false);
+			}
+		};
+
+		checkAuth();
+	}, []);
 
 	// Fetch available dates for the venue
 	useEffect(() => {
@@ -31,8 +54,11 @@ function VenueBooking() {
 
 	// Handle booking submission
 	const handleBooking = async () => {
+		setError(null);
+
 		if (!isAuthenticated) {
 			setError('You must be signed in to book a venue.');
+			toggleAuthModal(); // Show the sign-in modal
 			return;
 		}
 
@@ -47,32 +73,23 @@ function VenueBooking() {
 		}
 
 		try {
-			const response = await fetch(`http://localhost:5001/api/venue_rentals`, {
+			const response = await fetch('http://localhost:5001/api/venue_rentals', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ venue_id, start_date: startDate, end_date: endDate }),
+				credentials: 'include',
 			});
 
 			if (!response.ok) throw new Error('Failed to book venue.');
 
 			navigate('/venues'); // Redirect back to venues after successful booking
 		} catch (err) {
-			setError(err.message);
-		}
-	};
-
-	// Open sign-in/register modal via the Navbar
-	const promptSignIn = () => {
-		// Assume Navbar component has a method to toggle the modal
-		const signInModal = document.getElementById('sign-in-modal');
-		if (signInModal) {
-			signInModal.style.display = 'block'; // Example: Show the modal
+			setError(err.message || 'An error occurred while booking the venue.');
 		}
 	};
 
 	return (
 		<>
-			<Navbar />
 			<div className="venue-booking-page">
 				<button className="back-button" onClick={() => navigate(-1)}>
 					&larr; Back
@@ -116,19 +133,13 @@ function VenueBooking() {
 					</label>
 				</div>
 				{error && <p className="error-message">{error}</p>}
-				{isAuthenticated ? (
-					<button
-						onClick={handleBooking}
-						className="confirm-booking-button"
-						disabled={availableDates.length === 0}
-					>
-						Confirm Booking
-					</button>
-				) : (
-					<button onClick={promptSignIn} className="confirm-booking-button">
-						Sign In to Book
-					</button>
-				)}
+				<button
+					onClick={handleBooking}
+					className="confirm-booking-button"
+					disabled={availableDates.length === 0}
+				>
+					{isAuthenticated ? 'Confirm Booking' : 'Sign In to Book'}
+				</button>
 			</div>
 		</>
 	);
