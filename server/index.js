@@ -2,93 +2,34 @@
 // Creation of this code was assisted with AI tools. Especially with authentication and authorization.
 // Additionally with creating tests for the api endpoints, and date handling utilities.
 
+// Import dependencies
 const express = require('express');
-const app = express();
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const cookieParser = require('cookie-parser');
-const multer = require('multer'); // Import multer
+const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+require('dotenv').config(); // Load environment variables
 
-// Import date handling utilities
 const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
 
-require('dotenv').config(); // Load environment variables from .env file
+// Initialize Express app
+const app = express();
 
+// Load configuration
+const PORT = process.env.PORT || 5001;
 const secretKey = process.env.JWT_SECRET_KEY;
-const saltRounds = 10; // Define the salt rounds for bcrypt
+const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10; // Number of salt rounds for bcrypt
 
-// --- MIDDLEWARE ---
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
+// Middleware configuration
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
 
-// Middleware to check for a valid JWT token
-function authenticateToken(req, res, next) {
-  const token = req.cookies.token;  // Retrieve the token from the HTTP-only cookie
-  if (!token) {
-    return res.status(401).json({ error: 'Access denied. No token provided.' });
-  }
-
-  jwt.verify(token, secretKey, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid token.' });
-    }
-    req.user = user;  // Add user information to request object
-    next();
-  });
-}
-
-// --- MULTER CONFIGURATION ---
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Save files in the "uploads" folder
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
-  fileFilter: function (req, file, cb) {
-    const fileTypes = /jpeg|jpg|png/; // Allowed file types
-    const extName = fileTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimeType = fileTypes.test(file.mimetype);
-
-    if (extName && mimeType) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only images are allowed (JPEG, JPG, PNG).'));
-    }
-  }
-});
-
-// Ensure the uploads directory exists
-const fs = require('fs');
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-
-// Internal middleware to allow only server-originated requests
-function internalOnly(req, res, next) {
-  // Restrict based on internal headers or local access, for example:
-  const internalHeader = req.headers['x-internal-request'];
-  if (!internalHeader || internalHeader !== 'your-secure-value') {
-    return res.status(403).json({ error: 'Access denied' });
-  }
-  next();
-}
-
-// Database setup
+// --- DATABASE SETUP ---
 const db = new sqlite3.Database('./mydb.sqlite', (err) => {
   if (err) {
     console.error('Error opening database:', err.message);
@@ -98,446 +39,418 @@ const db = new sqlite3.Database('./mydb.sqlite', (err) => {
   }
 });
 
-// --- COMMUNITY POSTS ENDPOINTS ---
+// Function to start the server
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`✅ Server is running at: http://localhost:${PORT}`);
+    console.log(`🚀 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔑 JWT Secret Key Loaded: ${!!secretKey}`);
+    console.log(`🗄️ Database connected successfully`);
+  });
+};
 
-// Get all posts for an event community, accessible to users with an accepted invitation or the event organizer
-app.get('/api/events/:event_id/posts', authenticateToken, (req, res) => {
-  const { event_id } = req.params;
-  const user_id = req.user.user_id; // `authenticateToken` should set req.user
+// --- UTILITY FUNCTIONS ---
+// Middleware to check for a valid JWT token
 
-  // Check if the user is either the organizer of the event or has an accepted invitation
-  db.get(
+const authenticateToken = (req, res, next) => {
+  const token = req.cookies.token; // Retrieve the token from the HTTP-only cookie
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. No token provided.' });
+  }
+
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid token.' });
+    }
+    req.user = user; // Add user information to request object
+    next();
+  });
+};
+
+// Middleware to restrict access to internal requests
+
+const internalOnly = (req, res, next) => {
+  const internalHeader = req.headers['x-internal-request'];
+  if (!internalHeader || internalHeader !== 'your-secure-value') {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  next();
+};
+
+// --- MULTER CONFIGURATION ---
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/'); // Save files in the "uploads" folder
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /jpeg|jpg|png/;
+    const extName = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimeType = fileTypes.test(file.mimetype);
+
+    if (extName && mimeType) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only images are allowed (JPEG, JPG, PNG).'));
+    }
+  },
+});
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+
+// --- HELPER FUNCTIONS ---
+// Helper for database queries (promisified)
+const queryDb = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows)));
+  });
+};
+
+const getDbRow = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
+};
+
+const runDbQuery = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+      err ? reject(err) : resolve(this.lastID || this.changes);
+    });
+  });
+};
+
+// Validators
+const validateDateRange = (start_date, end_date) => {
+  const today = new Date();
+  const start = parseISO(start_date);
+  const end = parseISO(end_date);
+
+  if (isBefore(start, today) || isBefore(end, today)) {
+    throw new Error("Event dates cannot be in the past.");
+  }
+  if (isAfter(start, end)) {
+    throw new Error("End date cannot be before start date.");
+  }
+
+  return { start, end };
+};
+
+const checkOverlap = (start, end, rentals) => {
+  return rentals.some(rental => {
+    const rentalStart = parseISO(rental.start_date);
+    const rentalEnd = parseISO(rental.end_date);
+
+    return (
+      (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
+      (isEqual(start, rentalStart) || isEqual(end, rentalEnd))
+    );
+  });
+};
+
+// Authorizers
+const verifyEventAccess = async (event_id, user_id) => {
+  const row = await getDbRow(
     `SELECT EXISTS (
        SELECT 1 FROM Events WHERE event_id = ? AND organizer_id = ?
      ) AS is_organizer, EXISTS (
        SELECT 1 FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'
      ) AS has_accepted_invite`,
-    [event_id, user_id, event_id, user_id],
-    (err, row) => {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      if (!row.is_organizer && !row.has_accepted_invite) {
-        // User is neither the organizer nor has an accepted invitation
-        return res.status(403).json({ error: "Access denied. Only users with an accepted invitation or the event organizer can view posts." });
-      }
-
-      // User is authorized; fetch posts for the event
-      db.all(
-        `SELECT Community_Posts.post_id, Community_Posts.event_id, Community_Posts.user_id, Community_Posts.content, Community_Posts.created_at,
-                Users.name AS user_name, Events.name AS event_name
-         FROM Community_Posts
-         JOIN Users ON Community_Posts.user_id = Users.user_id
-         JOIN Events ON Community_Posts.event_id = Events.event_id
-         WHERE Community_Posts.event_id = ?`,
-        [event_id],
-        (err, rows) => {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-          res.json({ data: rows });
-        }
-      );
-    }
+    [event_id, user_id, event_id, user_id]
   );
+
+  if (!row.is_organizer && !row.has_accepted_invite) {
+    throw new Error("Access denied. Only users with an accepted invitation or the event organizer can view posts.");
+  }
+};
+
+const checkEventAccess = async (event_id, user_id) => {
+  const event = await getDbRow(
+    `SELECT E.organizer_id, V.owner_id 
+     FROM Events AS E 
+     JOIN Venues AS V ON E.venue_id = V.venue_id 
+     WHERE E.event_id = ?`,
+    [event_id]
+  );
+
+  if (!event) {
+    throw new Error("Event not found.");
+  }
+
+  const isOrganizer = event.organizer_id === user_id;
+  const isOwner = event.owner_id === user_id;
+
+  if (!isOrganizer && !isOwner) {
+    throw new Error("You do not have permission to modify this event.");
+  }
+
+  return { isOrganizer, isOwner, event };
+};
+
+
+// --- COMMUNITY POSTS ENDPOINTS ---
+
+// Get all posts for an event community, accessible to users with an accepted invitation or the event organizer
+app.get('/api/events/:event_id/posts', authenticateToken, async (req, res) => {
+  const { event_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Check user access to event posts
+    await verifyEventAccess(event_id, user_id);
+
+    // Fetch community posts for the event
+    const posts = await queryDb(
+      `SELECT Community_Posts.post_id, Community_Posts.event_id, Community_Posts.user_id, Community_Posts.content, Community_Posts.created_at,
+              Users.name AS user_name, Events.name AS event_name
+       FROM Community_Posts
+       JOIN Users ON Community_Posts.user_id = Users.user_id
+       JOIN Events ON Community_Posts.event_id = Events.event_id
+       WHERE Community_Posts.event_id = ?`,
+      [event_id]
+    );
+
+    res.json({ data: posts });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Add a new community post
-app.post('/api/posts', authenticateToken, (req, res) => {
-  const user_id = req.user.user_id; // Get user_id from token
+app.post('/api/posts', authenticateToken, async (req, res) => {
+  const user_id = req.user.user_id;
   const { event_id, content } = req.body;
 
-  // Check if the user has an accepted invitation to this event
-  db.get(
-    `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
-    [event_id, user_id],
-    (err, invitation) => {
-      if (err) {
-        return res.status(500).json({ error: "Error checking invitation status" });
-      }
-      if (!invitation) {
-        return res.status(403).json({ error: "You do not have permission to post in this event's community" });
-      }
-
-      // Insert the community post
-      db.run(
-        `INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
-        [event_id, user_id, content],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-          res.json({ post_id: this.lastID, message: "Post created successfully" });
-        }
-      );
+  try {
+    // Check user invitation status for the event
+    const invitation = await getDbRow(
+      `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
+      [event_id, user_id]
+    );
+    if (!invitation) {
+      throw new Error("You do not have permission to post in this event's community");
     }
-  );
+
+    // Insert community post
+    const post_id = await runDbQuery(
+      `INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
+      [event_id, user_id, content]
+    );
+
+    res.json({ post_id, message: "Post created successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Update a community post
-app.put('/api/posts/:id', authenticateToken, (req, res) => {
+app.put('/api/posts/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
-  const user_id = req.user.user_id; // Get user_id from token
+  const user_id = req.user.user_id;
 
-  // First, check if the post exists and if the user is the author
-  db.get(
-    `SELECT * FROM Community_Posts WHERE post_id = ? AND user_id = ?`,
-    [id, user_id],
-    (err, post) => {
-      if (err) {
-        return res.status(500).json({ error: "Error retrieving post" });
-      }
-      if (!post) {
-        // No post found with the given ID by this user
-        return res.status(403).json({ error: "You do not have permission to update this post" });
-      }
-
-      // If the user is the author, proceed to update the post
-      db.run(
-        `UPDATE Community_Posts SET content = ? WHERE post_id = ?`,
-        [content, id],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-
-          // Check if any row was updated
-          if (this.changes === 0) {
-            return res.status(400).json({ error: "No changes made to the post" });
-          }
-
-          res.json({ message: "Post updated successfully" });
-        }
-      );
+  try {
+    // Verify post ownership
+    const post = await getDbRow(`SELECT * FROM Community_Posts WHERE post_id = ? AND user_id = ?`, [id, user_id]);
+    if (!post) {
+      throw new Error("You do not have permission to update this post");
     }
-  );
+
+    // Update post content
+    const changes = await runDbQuery(`UPDATE Community_Posts SET content = ? WHERE post_id = ?`, [content, id]);
+    if (changes === 0) {
+      throw new Error("No changes made to the post");
+    }
+
+    res.json({ message: "Post updated successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete a community post
-app.delete('/api/posts/:id', authenticateToken, (req, res) => {
+app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const user_id = req.user.user_id; // Get user_id from token
+  const user_id = req.user.user_id;
 
-  // First, get the post details and check permissions
-  db.get(
-    `SELECT Community_Posts.post_id, Community_Posts.user_id AS post_author_id, Events.organizer_id
-     FROM Community_Posts 
-     JOIN Events ON Community_Posts.event_id = Events.event_id 
-     WHERE Community_Posts.post_id = ?`,
-    [id],
-    (err, post) => {
-      if (err) {
-        return res.status(500).json({ error: "Error retrieving post" });
-      }
-      if (!post) {
-        // No post found with the given ID
-        return res.status(404).json({ error: "Post not found" });
-      }
+  try {
+    // Retrieve post details and verify permissions
+    const post = await getDbRow(
+      `SELECT Community_Posts.post_id, Community_Posts.user_id AS post_author_id, Events.organizer_id
+       FROM Community_Posts 
+       JOIN Events ON Community_Posts.event_id = Events.event_id 
+       WHERE Community_Posts.post_id = ?`,
+      [id]
+    );
 
-      // Check if the user is either the post author or the event organizer
-      if (post.post_author_id !== user_id && post.organizer_id !== user_id) {
-        return res.status(403).json({ error: "You do not have permission to delete this post" });
-      }
-
-      // If the user is authorized, proceed to delete the post
-      db.run(
-        `DELETE FROM Community_Posts WHERE post_id = ?`,
-        [id],
-        function (err) {
-          if (err) {
-            return res.status(400).json({ error: err.message });
-          }
-
-          res.json({ message: "Post deleted successfully" });
-        }
-      );
+    if (!post) {
+      throw new Error("Post not found");
     }
-  );
+
+    if (post.post_author_id !== user_id && post.organizer_id !== user_id) {
+      throw new Error("You do not have permission to delete this post");
+    }
+
+    // Delete the post
+    await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [id]);
+
+    res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // --- EVENTS ENDPOINTS ---
 
 // Get all events
-app.get('/api/events', (req, res) => {
-  db.all('SELECT * FROM Events', [], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
+app.get('/api/events', async (req, res) => {
+  try {
+    const events = await queryDb('SELECT * FROM Events');
+    res.json({ data: events });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving events." });
+  }
+});
+
+// Get all user events
+app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    if (user_id !== req.user.user_id) {
+      throw new Error("You do not have permission to view events for this user.");
     }
-    res.json({ data: rows });
-  });
+
+    const events = await queryDb('SELECT * FROM Events WHERE organizer_id = ?', [user_id]);
+    res.json({ data: events });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Create a new event
-app.post('/api/events', authenticateToken, (req, res) => {
-  const userId = req.user.user_id;  // Get user ID from token
+app.post('/api/events', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
   const { venue_id, name, description, start_date, end_date } = req.body;
 
-  // Step 1: Check for initial required fields for both renter and owner
-  if (!venue_id || !name || !description) {
-    return res.status(400).json({ error: "Venue ID, name, and description are required." });
-  }
-
-  // Step 2: Check if user is authorized to create an event for this venue (either owner or active renter)
-  db.get(
-    `SELECT owner_id FROM Venues WHERE venue_id = ?`,
-    [venue_id],
-    (err, venue) => {
-      if (err) {
-        return res.status(500).json({ error: "Error retrieving venue information" });
-      }
-      if (!venue) {
-        return res.status(404).json({ error: "Venue not found" });
-      }
-
-      const isOwner = venue.owner_id === userId;
-      const today = new Date();
-
-      if (isOwner) {
-        // Step 3: If user is the owner, parse and validate the dates provided
-        if (!start_date || !end_date) {
-          return res.status(400).json({ error: "Start date and end date are required for owners." });
-        }
-
-        const eventStartDate = parseISO(start_date);
-        const eventEndDate = parseISO(end_date);
-
-        if (isBefore(eventStartDate, today) || isBefore(eventEndDate, today)) {
-          return res.status(400).json({ error: "Event dates cannot be in the past." });
-        }
-        if (isAfter(eventStartDate, eventEndDate)) {
-          return res.status(400).json({ error: "End date cannot be before start date." });
-        }
-
-        // Step 4: Check that the event dates do not overlap with existing rentals by other users
-        db.all(
-          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`,
-          [venue_id, userId],
-          (err, rentals) => {
-            if (err) {
-              return res.status(500).json({ error: "Error retrieving rental dates." });
-            }
-
-            const hasOverlap = rentals.some(rental => {
-              const rentalStart = parseISO(rental.start_date);
-              const rentalEnd = parseISO(rental.end_date);
-              return (
-                (isBefore(eventStartDate, rentalEnd) && isAfter(eventEndDate, rentalStart)) ||
-                (isBefore(eventStartDate, rentalStart) && isAfter(eventEndDate, rentalEnd))
-              );
-            });
-
-            if (hasOverlap) {
-              return res.status(400).json({ error: "Event dates overlap with an existing rental by another user." });
-            }
-
-            // If no overlap, proceed to create the event for the owner
-            createEvent(userId, venue_id, name, description, start_date, end_date, res);
-          }
-        );
-      } else {
-        // Step 5: If user is not the owner, ensure they have an active rental for the venue
-        db.get(
-          `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id = ? AND end_date >= ?`,
-          [venue_id, userId, today],
-          (err, rental) => {
-            if (err) {
-              return res.status(500).json({ error: "Error checking rental status." });
-            }
-            if (!rental) {
-              return res.status(403).json({ error: "Not authorized to create an event for this venue." });
-            }
-
-            // Use rental dates as event dates if renter is creating the event
-            createEvent(userId, venue_id, name, description, rental.start_date, rental.end_date, res);
-          }
-        );
-      }
+  try {
+    if (!venue_id || !name || !description) {
+      throw new Error("Venue ID, name, and description are required.");
     }
-  );
 
-  // Helper function to create an event
-  function createEvent(userId, venueId, name, description, startDate, endDate, res) {
-    db.run(
-      `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
-      [venueId, userId, name, description, startDate, endDate],
-      function (err) {
-        if (err) {
-          console.error("Error executing INSERT INTO Events:", err.message);
-          return res.status(500).json({ error: "Error creating event", details: err.message });
-        }
-        res.status(201).json({ message: "Event created successfully", event_id: this.lastID });
+    const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
+    if (!venue) {
+      throw new Error("Venue not found.");
+    }
+
+    const isOwner = venue.owner_id === userId;
+
+    if (isOwner) {
+      // Validate and check for date overlaps for owners
+      const { start, end } = validateDateRange(start_date, end_date);
+      const rentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`, [venue_id, userId]);
+
+      if (checkOverlap(start, end, rentals)) {
+        throw new Error("Event dates overlap with an existing rental by another user.");
       }
-    );
+
+      await runDbQuery(
+        `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
+        [venue_id, userId, name, description, start_date, end_date]
+      );
+
+    } else {
+      // Validate renter access
+      const rental = await getDbRow(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id = ? AND end_date >= ?`, [venue_id, userId, new Date()]);
+      if (!rental) {
+        throw new Error("Not authorized to create an event for this venue.");
+      }
+
+      await runDbQuery(
+        `INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
+        [venue_id, userId, name, description, rental.start_date, rental.end_date]
+      );
+    }
+
+    // Get the event ID 
+    const event = await getDbRow(`SELECT last_insert_rowid() AS event_id`);
+
+    res.status(201).json({ message: "Event created successfully.", event_id: event.event_id });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
 // Update event information
-app.put('/api/events/:id', authenticateToken, (req, res) => {
+app.put('/api/events/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { name, description, event_date_start, event_date_end } = req.body;
   const userId = req.user.user_id;
 
-  // Step 1: Validate the fields provided
-  if (!name && !description && (!event_date_start || !event_date_end)) {
-    return res.status(400).json({ error: "At least one field to update (name, description, or dates) is required." });
-  }
+  try {
+    const { isOrganizer, isOwner, event } = await checkEventAccess(id, userId);
 
-  // Step 2: Retrieve the event and associated venue
-  db.get(
-    `SELECT E.organizer_id, E.venue_id, V.owner_id FROM Events AS E 
-     JOIN Venues AS V ON E.venue_id = V.venue_id 
-     WHERE E.event_id = ?`,
-    [id],
-    (err, event) => {
-      if (err) {
-        return res.status(500).json({ error: "Error retrieving event information" });
-      }
-      if (!event) {
-        return res.status(404).json({ error: "Event not found" });
-      }
-
-      const isOrganizer = event.organizer_id === userId;
-      const isOwner = event.owner_id === userId;
-
-      // Step 3: Define update logic based on role
-      if (isOrganizer && !isOwner) {
-        // Renter updates: only name and description
-        if (event_date_start || event_date_end) {
-          return res.status(403).json({ error: "Renters cannot update event dates" });
-        }
-        db.run(
-          `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
-          [name, description, id],
-          function (err) {
-            if (err) {
-              return res.status(500).json({ error: "Error updating event" });
-            }
-            if (this.changes === 0) {
-              return res.status(400).json({ error: "No changes made to the event" });
-            }
-            res.json({ message: "Event updated successfully" });
-          }
-        );
-      } else if (isOwner) {
-        // Owner updates: can update name, description, and dates with validation
-        if (event_date_start && event_date_end) {
-          const start = parseISO(event_date_start);
-          const end = parseISO(event_date_end);
-
-          if (isAfter(start, end)) {
-            return res.status(400).json({ error: "Start date cannot be after end date" });
-          }
-
-          // Check for conflicts with existing rentals
-          db.all(
-            `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`,
-            [event.venue_id, userId],
-            (err, rentals) => {
-              if (err) {
-                return res.status(500).json({ error: "Error retrieving rental information" });
-              }
-
-              const hasConflict = rentals.some(rental => {
-                const rentalStart = parseISO(rental.start_date);
-                const rentalEnd = parseISO(rental.end_date);
-
-                return (
-                  (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-                  isEqual(start, rentalStart) || isEqual(end, rentalEnd)
-                );
-              });
-
-              if (hasConflict) {
-                return res.status(400).json({ error: "Event dates conflict with existing rentals at the venue" });
-              }
-
-              // If no conflict, proceed with update
-              db.run(
-                `UPDATE Events SET name = ?, description = ?, event_date_start = ?, event_date_end = ? WHERE event_id = ?`,
-                [name, description, event_date_start, event_date_end, id],
-                function (err) {
-                  if (err) {
-                    return res.status(500).json({ error: "Error updating event" });
-                  }
-                  if (this.changes === 0) {
-                    return res.status(400).json({ error: "No changes made to the event" });
-                  }
-                  res.json({ message: "Event updated successfully" });
-                }
-              );
-            }
-          );
-        } else {
-          // Owner updating only name and description
-          db.run(
-            `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
-            [name, description, id],
-            function (err) {
-              if (err) {
-                return res.status(500).json({ error: "Error updating event" });
-              }
-              if (this.changes === 0) {
-                return res.status(400).json({ error: "No changes made to the event" });
-              }
-              res.json({ message: "Event updated successfully" });
-            }
-          );
-        }
-      } else {
-        res.status(403).json({ error: "Not authorized to update this event" });
-      }
+    if (isOrganizer && !isOwner && (event_date_start || event_date_end)) {
+      throw new Error("Renters cannot update event dates.");
     }
-  );
+
+    if (isOwner && event_date_start && event_date_end) {
+      const { start, end } = validateDateRange(event_date_start, event_date_end);
+      const rentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`, [event.venue_id, userId]);
+
+      if (checkOverlap(start, end, rentals)) {
+        throw new Error("Event dates conflict with existing rentals.");
+      }
+
+      await runDbQuery(
+        `UPDATE Events SET name = ?, description = ?, event_date_start = ?, event_date_end = ? WHERE event_id = ?`,
+        [name, description, event_date_start, event_date_end, id]
+      );
+    } else {
+      await runDbQuery(
+        `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
+        [name, description, id]
+      );
+    }
+
+    res.json({ message: "Event updated successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete an event
-app.delete('/api/events/:id', authenticateToken, (req, res) => {
+app.delete('/api/events/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.user_id;
 
-  // Step 1: Retrieve event details to check if the user is authorized
-  db.get(`SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`, [id], (err, event) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving event details" });
-    }
-    if (!event) {
-      return res.status(404).json({ error: "Event not found" });
+  try {
+    const { isOwner, isOrganizer } = await checkEventAccess(id, userId);
+
+    if (!isOwner && !isOrganizer) {
+      throw new Error("You do not have permission to delete this event.");
     }
 
-    // Step 2: Check if the user is the event creator or the venue owner
-    const isOrganizer = event.organizer_id === userId;
-
-    // If not the organizer, check if they are the owner of the venue
-    if (!isOrganizer) {
-      db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [event.venue_id], (err, venue) => {
-        if (err) {
-          return res.status(500).json({ error: "Error retrieving venue details" });
-        }
-        if (!venue || venue.owner_id !== userId) {
-          return res.status(403).json({ error: "You do not have permission to delete this event" });
-        }
-
-        // User is the venue owner, proceed to delete the event
-        deleteEvent(id, res);
-      });
-    } else {
-      // User is the organizer, proceed to delete the event
-      deleteEvent(id, res);
+    const changes = await runDbQuery(`DELETE FROM Events WHERE event_id = ?`, [id]);
+    if (changes === 0) {
+      throw new Error("Event not found.");
     }
-  });
 
-  // Helper function to delete the event
-  function deleteEvent(eventId, res) {
-    db.run(`DELETE FROM Events WHERE event_id = ?`, [eventId], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error deleting event" });
-      }
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Event not found" });
-      }
-      res.json({ message: "Event deleted successfully" });
-    });
+    res.json({ message: "Event deleted successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -1656,7 +1569,4 @@ app.delete('/api/available_dates/:id', authenticateToken, (req, res) => {
 // --- END OF CRUD ENDPOINTS ---
 
 // Start the server
-const PORT = 5001;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-})
+startServer();
