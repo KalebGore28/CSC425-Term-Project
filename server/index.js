@@ -110,6 +110,9 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
 
+// Sets up a static file server to serve files from the "uploads" directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // --- HELPER FUNCTIONS ---
 // Helper for database queries (promisified)
 const queryDb = (sql, params = []) => {
@@ -1096,10 +1099,11 @@ app.get('/api/images/:id', async (req, res) => {
       throw new Error("Image not found");
     }
 
-    const imagePath = path.resolve(__dirname, row.image_url);
+    const imagePath = path.join(__dirname, row.image_url);
 
     // Check if the file exists
     if (!fs.existsSync(imagePath)) {
+      console.error("File not found:", imagePath);
       throw new Error("Image file not found on server");
     }
 
@@ -1144,15 +1148,6 @@ app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'
     res.status(400).json({ error: error.message });
   }
 });
-
-// Delete a venue image
-app.delete('/api/images/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.user_id;
-  
-
-// --- STATIC FILES FOR UPLOADED IMAGES ---
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --- USER_VENUE_Rentals ENDPOINTS --- ✅
 

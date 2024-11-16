@@ -1,5 +1,3 @@
-// src/VenuePage.jsx
-
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import './VenuePage.css';
@@ -15,7 +13,7 @@ function VenuePage() {
 			try {
 				const response = await fetch('http://localhost:5001/api/venues');
 				if (response.ok) {
-					const { data } = await response.json(); // Extract the `data` array
+					const { data } = await response.json();
 					setVenues(data);
 				} else {
 					console.error('Failed to fetch venues. Status:', response.status);
@@ -26,6 +24,7 @@ function VenuePage() {
 				setIsLoading(false);
 			}
 		};
+
 		fetchVenues();
 	}, []);
 
@@ -36,7 +35,7 @@ function VenuePage() {
 				<h1>Explore Venues</h1>
 				{isLoading ? (
 					<p>Loading venues...</p>
-				) : venues && venues.length > 0 ? (
+				) : venues.length > 0 ? (
 					<div className="venue-list">
 						{venues.map((venue) => (
 							<div className="venue-card" key={venue.venue_id}>
