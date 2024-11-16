@@ -76,8 +76,20 @@ function Navbar({ children }) {
 	const toggleDropdownMenu = () => setIsDropdownMenuOpen(!isDropdownMenuOpen);
 	const toggleAuthModal = () => setIsAuthModalOpen(!isAuthModalOpen);
 	const toggleRegistrationForm = () => setIsRegistering(!isRegistering);
-	const toggleProfileMenu = () => setIsProfileMenuVisible(!isProfileMenuVisible);
-	const toggleNotifications = () => setIsNotificationsOpen(!isNotificationsOpen);
+	const toggleProfileMenu = () => {
+		setIsProfileMenuVisible(!isProfileMenuVisible)
+
+		if (isNotificationsOpen) {
+			setIsNotificationsOpen(false);
+		}
+	};
+	const toggleNotifications = () => {
+		setIsNotificationsOpen(!isNotificationsOpen);
+
+		if (isProfileMenuVisible) {
+			setIsProfileMenuVisible(false);
+		}
+	};
 
 	// Handle modal close
 	const closeAuthModal = () => {
@@ -161,13 +173,16 @@ function Navbar({ children }) {
 	// Mark notifications as read
 	const markNotificationsAsRead = async () => {
 		try {
-			await fetch('http://localhost:5001/api/notifications/read', {
+			await fetch('http://localhost:5001/api/notifications/readall', {
 				method: 'POST',
 				credentials: 'include',
 			});
+
+			// Update the state in the frontend
 			setNotifications((prev) =>
-				prev.map((notif) => ({ ...notif, is_read: true }))
+				prev.map((notif) => ({ ...notif, status: "Read" }))
 			);
+
 		} catch (error) {
 			console.error('Error marking notifications as read:', error);
 		}
@@ -213,15 +228,39 @@ function Navbar({ children }) {
 									<a href="/new-venue" className="nav-link">List a Venue</a>
 								</div>
 								{currentUser ? (
-									<div className="user-profile">
-										<div className="user-circle" onClick={toggleProfileMenu}>
-											{currentUser.name.charAt(0).toUpperCase()}
+									<>
+										<div className="notifications-icon" onClick={toggleNotifications}>
+											🔔
+											{/* Notification dot */}
+											{notifications.some((notif) => notif.status !== "Read") && (
+												<span className="notification-dot" />
+											)}
+											{/* Notifications dropdown */}
+											<div className={`notifications-dropdown ${isNotificationsOpen ? 'open' : ''}`}>
+												{notifications.length ? (
+													<>
+														<button onClick={markNotificationsAsRead}>Mark all as read</button>
+														{notifications.map((notif) => (
+															<div key={notif.id} className={`notification ${notif.status === "Read" ? 'read' : 'unread'}`}>
+																<p>{notif.message}</p>
+															</div>
+														))}
+													</>
+												) : (
+													<p>No new notifications</p>
+												)}
+											</div>
 										</div>
-										<div className={`profile-menu ${isProfileMenuVisible ? 'open' : ''}`}>
-											<a href="/profile" className="profile-link">My Profile</a>
-											<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
+										<div className="user-profile">
+											<div className="user-circle" onClick={toggleProfileMenu}>
+												{currentUser.name.charAt(0).toUpperCase()}
+											</div>
+											<div className={`profile-menu ${isProfileMenuVisible ? 'open' : ''}`}>
+												<a href="/profile" className="profile-link">My Profile</a>
+												<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
+											</div>
 										</div>
-									</div>
+									</>
 								) : (
 									<a onClick={toggleAuthModal} className="nav-link">Sign In</a>
 								)}

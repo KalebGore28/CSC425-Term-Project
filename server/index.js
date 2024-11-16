@@ -755,6 +755,28 @@ app.put('/api/notifications/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Mark all notifications as read
+app.post('/api/notifications/readall', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    // Update all notifications for the authenticated user to "Read"
+    const changes = await runDbQuery(
+      `UPDATE Notifications SET status = "Read" WHERE user_id = ? AND status = "Unread"`,
+      [userId]
+    );
+
+    if (changes === 0) {
+      return res.status(200).json({ message: "No unread notifications to update." });
+    }
+
+    res.json({ message: "All notifications marked as read." });
+  } catch (error) {
+    console.error("Error marking notifications as read:", error.message);
+    res.status(500).json({ error: "An error occurred while marking notifications as read." });
+  }
+});
+
 // Delete a notification
 app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
