@@ -188,3 +188,42 @@
 .profile-link:hover {
 	background-color: #2e887e;
 }
+
+.notifications-dropdown {
+	position: absolute;
+	top: 4rem;
+	right: 1rem; /* Align with the notifications icon */
+	background: white;
+	color: black;
+	padding: 1rem;
+	border-radius: 8px;
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	display: none;
+	flex-direction: column;
+	width: 250px;
+	z-index: 1000;
+}
+
+.notifications-dropdown.open {
+	display: flex;
+}
+
+.notification-item {
+	padding: 0.5rem;
+	border-bottom: 1px solid #eee;
+}
+
+.notification-item.unread {
+	font-weight: bold;
+	background: #f0f0f0;
+}
+
+.notification-dot {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	width: 8px;
+	height: 8px;
+	background-color: red;
+	border-radius: 50%;
+}

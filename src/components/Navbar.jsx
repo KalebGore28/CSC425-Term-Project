@@ -17,6 +17,8 @@ function Navbar({ children }) {
 	const [errorMessage, setErrorMessage] = useState('');
 	const [currentUser, setCurrentUser] = useState(null);
 	const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
+	const [notifications, setNotifications] = useState([]);
+	const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
 	// Effect to handle window resizing
 	useEffect(() => {
@@ -44,11 +46,38 @@ function Navbar({ children }) {
 		fetchUserInfo();
 	}, []);
 
+	// Fetch notifications
+	useEffect(() => {
+		const fetchNotifications = async () => {
+			if (!currentUser) return; // Only fetch if the user is logged in
+
+			try {
+				const response = await fetch('http://localhost:5001/api/notifications', {
+					method: 'GET',
+					credentials: 'include',
+				});
+				if (response.ok) {
+					const data = await response.json();
+					setNotifications(data.data || []); // Safely handle empty or missing data
+				} else {
+					console.error('Failed to fetch notifications');
+					setNotifications([]); // Reset notifications in case of failure
+				}
+			} catch (error) {
+				console.error('Error fetching notifications:', error);
+				setNotifications([]); // Handle errors gracefully
+			}
+		};
+
+		fetchNotifications();
+	}, [currentUser]);
+
 	// Functions to toggle UI elements
 	const toggleDropdownMenu = () => setIsDropdownMenuOpen(!isDropdownMenuOpen);
 	const toggleAuthModal = () => setIsAuthModalOpen(!isAuthModalOpen);
 	const toggleRegistrationForm = () => setIsRegistering(!isRegistering);
 	const toggleProfileMenu = () => setIsProfileMenuVisible(!isProfileMenuVisible);
+	const toggleNotifications = () => setIsNotificationsOpen(!isNotificationsOpen);
 
 	// Handle modal close
 	const closeAuthModal = () => {
@@ -129,6 +158,21 @@ function Navbar({ children }) {
 		}
 	};
 
+	// Mark notifications as read
+	const markNotificationsAsRead = async () => {
+		try {
+			await fetch('http://localhost:5001/api/notifications/read', {
+				method: 'POST',
+				credentials: 'include',
+			});
+			setNotifications((prev) =>
+				prev.map((notif) => ({ ...notif, is_read: true }))
+			);
+		} catch (error) {
+			console.error('Error marking notifications as read:', error);
+		}
+	};
+
 	// Provide context value
 	const contextValue = {
 		windowWidth,
@@ -149,6 +193,9 @@ function Navbar({ children }) {
 		setErrorMessage,
 		closeAuthModal,
 		handleLogout,
+		notifications,
+		setNotifications,
+		toggleNotifications,
 	};
 
 	return (
