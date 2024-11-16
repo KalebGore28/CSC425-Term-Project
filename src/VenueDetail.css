@@ -177,14 +177,17 @@
 
 /* Calendar section styling */
 .venue-detail-calendar {
-	flex: 1;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
 }
 
 /* Specific styling for the Available Dates header */
 .venue-detail-calendar h1 {
 	font-size: 2.5rem;
 	/* Match the venue name size */
-	margin-bottom: 10px;
+	margin-bottom: 20px;
 	color: #333;
 	/* Match the color */
 	text-align: center;
@@ -251,6 +254,24 @@
 .react-calendar__navigation button:hover {
 	background-color: #f0f8ff;
 	color: #0056b3;
+}
+
+/* Book Now button styling */
+.book-now-button {
+	display: flex;
+	margin-top: 20px;
+	background-color: #28a745;
+	color: white;
+	padding: 10px 20px;
+	border: none;
+	border-radius: 5px;
+	font-size: 1rem;
+	cursor: pointer;
+	transition: background-color 0.3s ease;
+}
+
+.book-now-button:hover {
+	background-color: #218838;
 }
 
 /* Adjustments for responsiveness */

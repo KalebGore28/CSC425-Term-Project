@@ -872,6 +872,25 @@ app.post('/api/logout', authenticateToken, (req, res) => {
   }
 });
 
+// Get user auth status
+app.get('/api/auth/session', (req, res) => {
+  const token = req.cookies.token; // Retrieve the token from the HTTP-only cookie
+
+  if (!token) {
+    // If no token is found, return a consistent response indicating the user is not authenticated
+    return res.json({ isAuthenticated: false, user: null });
+  }
+
+  jwt.verify(token, secretKey, (err, user) => {
+    if (err) {
+      // If token verification fails, indicate the user is not authenticated
+      return res.json({ isAuthenticated: false, user: null });
+    }
+    // If the token is valid, return the authenticated user
+    res.json({ isAuthenticated: true, user });
+  });
+});
+
 // Get current user profile
 app.get('/api/users/me', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;

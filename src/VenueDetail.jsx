@@ -16,6 +16,7 @@ function VenueDetail() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
 
+	// Fetch venue details and available dates
 	useEffect(() => {
 		const fetchVenueAndDates = async () => {
 			try {
@@ -38,6 +39,7 @@ function VenueDetail() {
 		fetchVenueAndDates();
 	}, [venue_id]);
 
+	// Calendar highlighting for available dates
 	const tileClassName = useMemo(() => {
 		return ({ date, view }) => {
 			if (view === 'month') {
@@ -50,12 +52,39 @@ function VenueDetail() {
 		};
 	}, [availableDates]);
 
+	// Handle navigation back to the venues page
 	const handleBackClick = () => navigate('/venues');
 
-	if (isLoading) return <p>Loading venue details...</p>;
+	// Handle "Book Now" button click
+	const handleBookNow = async () => {
+		try {
+			// Check if the user is authenticated
+			const response = await fetch('http://localhost:5001/api/auth/session', {
+				credentials: 'include',
+			});
 
-	if (error) return <p>Error: {error}</p>;
+			const data = await response.json();
 
+			if (data.isAuthenticated) {
+				// If authenticated, navigate to the booking page
+				navigate(`/venues/${venue_id}/booking`);
+			} else {
+				// If not authenticated, show the sign-in modal
+				const signInModal = document.getElementById('sign-in-modal');
+				if (signInModal) {
+					signInModal.style.display = 'block'; // Show the modal
+				}
+			}
+		} catch {
+			// Handle errors gracefully
+			const signInModal = document.getElementById('sign-in-modal');
+			if (signInModal) {
+				signInModal.style.display = 'block'; // Show the modal
+			}
+		}
+	};
+
+	// Slider settings for the image carousel
 	const sliderSettings = {
 		dots: true,
 		infinite: true,
@@ -65,11 +94,14 @@ function VenueDetail() {
 		arrows: true,
 	};
 
+	// Placeholder image array (replace this with API-based image fetching when implemented)
 	const images = [
-		`http://localhost:5001/api/images/${venue.thumbnail_image_id}`,
-		`http://localhost:5001/api/images/${venue.thumbnail_image_id}`, // Duplicate for testing
-		`http://localhost:5001/api/images/${venue.thumbnail_image_id}`, // Additional duplicate
+		`http://localhost:5001/api/images/${venue?.thumbnail_image_id}`,
+		`http://localhost:5001/api/images/${venue?.thumbnail_image_id}`, // Duplicate for testing
 	];
+
+	if (isLoading) return <p>Loading venue details...</p>;
+	if (error) return <p>Error: {error}</p>;
 
 	return (
 		<>
@@ -108,6 +140,9 @@ function VenueDetail() {
 						<Calendar tileClassName={tileClassName} />
 					</div>
 				</div>
+				<button onClick={handleBookNow} className="confirm-booking-button">
+					Book Now
+				</button>
 			</div>
 		</>
 	);
