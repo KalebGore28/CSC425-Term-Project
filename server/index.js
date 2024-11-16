@@ -160,6 +160,18 @@ const checkOverlap = (start, end, rentals) => {
   });
 };
 
+const validateVenueFields = ({ name, location, description, capacity, price }) => {
+  if (!name || !location || !description || !capacity || !price) {
+    throw new Error("All fields (name, location, description, capacity, price) are required.");
+  }
+  if (!Number.isInteger(capacity) || capacity <= 0) {
+    throw new Error("Capacity must be a positive integer.");
+  }
+  if (typeof price !== 'number' || price <= 0) {
+    throw new Error("Price must be a positive number.");
+  }
+};
+
 // Authorizers
 const verifyEventAccess = async (event_id, user_id) => {
   const row = await getDbRow(
@@ -216,7 +228,7 @@ const verifyInvitationAccess = async (invitationId, userId) => {
 };
 
 
-// --- COMMUNITY POSTS ENDPOINTS ---
+// --- COMMUNITY POSTS ENDPOINTS --- ✅
 
 // Get all posts for an event community, accessible to users with an accepted invitation or the event organizer
 app.get('/api/events/:event_id/posts', authenticateToken, async (req, res) => {
@@ -328,7 +340,7 @@ app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- EVENTS ENDPOINTS ---
+// --- EVENTS ENDPOINTS --- ✅
 
 // Get all events
 app.get('/api/events', async (req, res) => {
@@ -470,7 +482,7 @@ app.delete('/api/events/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- INVITATIONS ENDPOINTS ---
+// --- INVITATIONS ENDPOINTS --- ✅
 
 // Get all invitations for an event
 app.get('/api/events/:event_id/invitations', authenticateToken, async (req, res) => {
@@ -642,91 +654,90 @@ app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
 // --- NOTIFICATIONS ENDPOINTS ---
 
 // Get all notifications for the authenticated user
-app.get('/api/notifications', authenticateToken, (req, res) => {
-  const userId = req.user.user_id; // Retrieve user ID from the token
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
 
-  // Fetch notifications for the authenticated user
-  db.all(`SELECT * FROM Notifications WHERE user_id = ?`, [userId], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving notifications" });
-    }
-    res.json({ data: rows });
-  });
+  try {
+    const notifications = await queryDb(`SELECT * FROM Notifications WHERE user_id = ?`, [userId]);
+    res.json({ data: notifications });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving notifications" });
+  }
 });
 
-// Add a new notification
-app.post('/internal/api/notifications', internalOnly, (req, res) => {
+// Add a new notification (Internal Only)
+app.post('/internal/api/notifications', internalOnly, async (req, res) => {
   const { user_id, event_id, message } = req.body;
 
-  db.run(`INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
-    [user_id, event_id, message],
-    function (err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      res.json({ notification_id: this.lastID });
-    });
+  try {
+    const notificationId = await runDbQuery(
+      `INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
+      [user_id, event_id, message]
+    );
+
+    res.json({ notification_id: notificationId });
+  } catch (error) {
+    res.status(400).json({ error: "Error adding notification", details: error.message });
+  }
 });
 
 // Update a notification
-app.put('/api/notifications/:id', authenticateToken, (req, res) => {
+app.put('/api/notifications/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  const userId = req.user.user_id; // Get the user ID from the token
+  const userId = req.user.user_id;
 
-  // Step 1: Check if the notification belongs to the authenticated user
-  db.get(`SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`, [id, userId], (err, notification) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving notification data" });
-    }
+  try {
+    // Check if the notification belongs to the authenticated user
+    const notification = await getDbRow(
+      `SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`,
+      [id, userId]
+    );
+
     if (!notification) {
       return res.status(403).json({ error: "Unauthorized to update this notification or it does not exist" });
     }
 
-    // Step 2: Update the notification if it belongs to the user
-    db.run(`UPDATE Notifications SET status = ? WHERE notification_id = ?`, [status, id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error updating notification" });
-      }
+    // Update the notification
+    const changes = await runDbQuery(`UPDATE Notifications SET status = ? WHERE notification_id = ?`, [status, id]);
 
-      // Check if any row was updated
-      if (this.changes === 0) {
-        return res.status(400).json({ error: "No changes made to the notification" });
-      }
+    if (changes === 0) {
+      throw new Error("No changes made to the notification");
+    }
 
-      res.json({ message: 'Notification updated successfully' });
-    });
-  });
+    res.json({ message: "Notification updated successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete a notification
-app.delete('/api/notifications/:id', authenticateToken, (req, res) => {
+app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id; // Get user ID from token
+  const userId = req.user.user_id;
 
-  // Step 1: Verify the notification belongs to the authenticated user
-  db.get(`SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`, [id, userId], (err, notification) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving notification data" });
-    }
+  try {
+    // Verify the notification belongs to the authenticated user
+    const notification = await getDbRow(
+      `SELECT * FROM Notifications WHERE notification_id = ? AND user_id = ?`,
+      [id, userId]
+    );
+
     if (!notification) {
       return res.status(403).json({ error: "Unauthorized to delete this notification or it does not exist" });
     }
 
-    // Step 2: Proceed to delete if ownership is confirmed
-    db.run(`DELETE FROM Notifications WHERE notification_id = ?`, [id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error deleting notification" });
-      }
+    // Proceed to delete the notification
+    const changes = await runDbQuery(`DELETE FROM Notifications WHERE notification_id = ?`, [id]);
 
-      // Confirm deletion
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Notification not found" });
-      }
+    if (changes === 0) {
+      throw new Error("Notification not found");
+    }
 
-      res.json({ message: 'Notification deleted successfully' });
-    });
-  });
+    res.json({ message: "Notification deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // --- USERS ENDPOINTS ---
@@ -936,116 +947,101 @@ app.delete('/api/users/me', authenticateToken, (req, res) => {
   });
 });
 
-// --- VENUES ENDPOINTS ---
+// --- VENUES ENDPOINTS --- ✅
 
 // Get all venues
-app.get('/api/venues', (req, res) => {
-  db.all('SELECT * FROM Venues', [], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json({ data: rows });
-  });
+app.get('/api/venues', async (req, res) => {
+  try {
+    const venues = await queryDb('SELECT * FROM Venues');
+    res.json({ data: venues });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving venues." });
+  }
 });
 
 // Create a new venue
-app.post('/api/venues', authenticateToken, (req, res) => {
+app.post('/api/venues', authenticateToken, async (req, res) => {
   const { name, location, description, capacity, price } = req.body;
-  const owner_id = req.user.user_id; // Get user_id from the authenticated token
+  const owner_id = req.user.user_id;
 
-  // Validate required fields
-  if (!name || !location || !description || !capacity || !price) {
-    return res.status(400).json({ error: "All fields (name, location, description, capacity, price) are required." });
+  try {
+    validateVenueFields({ name, location, description, capacity, price });
+
+    const venueId = await runDbQuery(
+      `INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
+      [owner_id, name, location, description, capacity, price]
+    );
+
+    res.status(201).json({ message: "Venue created successfully", venue_id: venueId });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
-
-  db.run(
-    `INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
-    [owner_id, name, location, description, capacity, price],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error creating venue" });
-      }
-      res.status(201).json({ message: "Venue created successfully", venue_id: this.lastID });
-    }
-  );
 });
 
 // Update venue information
-app.put('/api/venues/:id', authenticateToken, (req, res) => {
+app.put('/api/venues/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id;
   const { name, location, description, capacity, price } = req.body;
+  const userId = req.user.user_id;
 
-  // Check for missing required fields
-  if (!name || !location) {
-    return res.status(400).json({ error: "Both name and location are required." });
-  }
-
-  // Validate data types for other fields
-  if (capacity !== undefined && (!Number.isInteger(capacity) || capacity <= 0)) {
-    return res.status(400).json({ error: "Capacity must be a positive integer." });
-  }
-  if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
-    return res.status(400).json({ error: "Price must be a positive number." });
-  }
-
-  // Check if the venue belongs to the authenticated user
-  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [id], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving venue data." });
-    }
-    if (!row) {
-      return res.status(404).json({ error: "Venue not found." });
-    }
-    if (row.owner_id !== userId) {
-      return res.status(403).json({ error: "You do not have permission to update this venue." });
+  try {
+    if (!name || !location) {
+      throw new Error("Both name and location are required.");
     }
 
-    // Update the venue if ownership and validation pass
-    db.run(
+    // Optional fields validation
+    if (capacity !== undefined && (!Number.isInteger(capacity) || capacity <= 0)) {
+      throw new Error("Capacity must be a positive integer.");
+    }
+    if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
+      throw new Error("Price must be a positive number.");
+    }
+
+    // Check venue ownership
+    const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [id]);
+    if (!venue) {
+      throw new Error("Venue not found.");
+    }
+    if (venue.owner_id !== userId) {
+      throw new Error("You do not have permission to update this venue.");
+    }
+
+    const changes = await runDbQuery(
       `UPDATE Venues SET name = ?, location = ?, description = ?, capacity = ?, price = ? WHERE venue_id = ?`,
-      [name, location, description, capacity, price, id],
-      function (err) {
-        if (err) {
-          return res.status(500).json({ error: "Error updating venue." });
-        }
-        if (this.changes === 0) {
-          return res.status(400).json({ error: "No changes made to the venue." });
-        }
-        res.json({ message: "Venue updated successfully" });
-      }
+      [name, location, description, capacity, price, id]
     );
-  });
+
+    if (changes === 0) {
+      throw new Error("No changes made to the venue.");
+    }
+
+    res.json({ message: "Venue updated successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete a venue
-app.delete('/api/venues/:id', authenticateToken, (req, res) => {
+app.delete('/api/venues/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.user_id;  // Retrieve user_id from the token
+  const userId = req.user.user_id;
 
-  // Check if the venue exists and belongs to the authenticated user
-  db.get(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [id, userId], (err, venue) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving venue information" });
-    }
+  try {
+    // Check venue ownership
+    const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [id, userId]);
     if (!venue) {
-      return res.status(404).json({ error: "Venue not found or unauthorized to delete" });
+      throw new Error("Venue not found or unauthorized to delete.");
     }
 
-    // Proceed to delete the venue
-    db.run(`DELETE FROM Venues WHERE venue_id = ?`, [id], function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Error deleting venue" });
-      }
+    const changes = await runDbQuery(`DELETE FROM Venues WHERE venue_id = ?`, [id]);
+    if (changes === 0) {
+      throw new Error("Venue not found.");
+    }
 
-      // Confirm that the venue was deleted
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Venue not found" });
-      }
-
-      res.json({ message: 'Venue deleted successfully' });
-    });
-  });
+    res.json({ message: "Venue deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Get venue images
