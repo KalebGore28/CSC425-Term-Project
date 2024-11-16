@@ -90,7 +90,6 @@ function VenueDetail() {
 
 	return (
 		<>
-			<Navbar />
 			<div className="venue-detail-page">
 				<button onClick={handleBackClick} className="back-button">
 					&larr; Back to Venues

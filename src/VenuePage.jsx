@@ -31,7 +31,6 @@ function VenuePage() {
 
 	return (
 		<>
-			<Navbar />
 			<div className="venue-page">
 				<h1>Explore Venues</h1>
 				{isLoading ? (

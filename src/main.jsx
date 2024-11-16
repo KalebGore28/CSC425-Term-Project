@@ -4,7 +4,7 @@
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Navbar, { NavbarContext } from './components/Navbar';
+import Navbar from './components/Navbar';
 
 // Import components
 import LandingPage from './LandingPage';
@@ -16,7 +16,8 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <Navbar>
+    {/* Wrap the entire application in the Navbar component for context utilization */}
+    <Navbar> 
       <Router>
         <Suspense fallback={<div>Loading...</div>}>
           <Routes>

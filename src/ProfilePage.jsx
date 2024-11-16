@@ -123,7 +123,6 @@ function ProfilePage() {
 
 	return (
 		<>
-			<Navbar />
 			<div className="profile-page">
 				<h1>Profile</h1>
 

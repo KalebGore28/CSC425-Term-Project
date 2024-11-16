@@ -26,7 +26,6 @@ function LandingPage() {
 
 	return (
 		<>
-			<Navbar />
 			<div className="landing-page">
 				<div
 					className="hero-section"
