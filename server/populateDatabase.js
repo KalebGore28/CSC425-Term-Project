@@ -158,8 +158,8 @@ const createEventsFromRentals = (rentals) => {
 			organizer_id: rental.user_id,
 			name: customEvent.name,
 			description: customEvent.description,
-			event_date_start: rental.start_date,
-			event_date_end: rental.end_date,
+			start_date: rental.start_date,
+			end_date: rental.end_date,
 		};
 	});
 };
@@ -176,7 +176,7 @@ const createInvitationsForEvents = async (events) => {
 		for (const event of shuffledEvents) {
 			// Check for overlap with the user's already accepted invitations
 			const hasOverlap = acceptedInvitationsForUser.some(inv =>
-				(event.event_date_start <= inv.event_date_end && event.event_date_end >= inv.event_date_start)
+				(event.start_date <= inv.end_date && event.end_date >= inv.start_date)
 			);
 
 			// If no overlap, mark as 'Accepted' and add to accepted invitations
@@ -185,8 +185,8 @@ const createInvitationsForEvents = async (events) => {
 
 			if (status === 'Accepted') {
 				acceptedInvitationsForUser.push({
-					event_date_start: event.event_date_start,
-					event_date_end: event.event_date_end
+					start_date: event.start_date,
+					end_date: event.end_date
 				});
 			}
 		}
@@ -361,8 +361,8 @@ const insertRentalBooking = (rental) => {
 const insertEvent = (event) => {
 	return new Promise((resolve, reject) => {
 		db.run(
-			`INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
-			[event.venue_id, event.organizer_id, event.name, event.description, event.event_date_start, event.event_date_end],
+			`INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
+			[event.venue_id, event.organizer_id, event.name, event.description, event.start_date, event.end_date],
 			function (err) {
 				if (err) return reject('Error adding event: ' + err.message);
 				console.log(`Event added with ID: ${this.lastID} for venue ${event.venue_id}`);

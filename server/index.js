@@ -191,6 +191,14 @@ const validateRegistrationInput = ({ name, email, password }) => {
   return true;
 };
 
+const validateDateFormat = (date) => {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(date)) {
+    throw new Error("Invalid date format. Use YYYY-MM-DD.");
+  }
+};
+
+
 // Authorizers
 const verifyEventAccess = async (event_id, user_id) => {
   const row = await getDbRow(
@@ -1137,10 +1145,16 @@ app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'
   }
 });
 
+// Delete a venue image
+app.delete('/api/images/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.user_id;
+  
+
 // --- STATIC FILES FOR UPLOADED IMAGES ---
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// --- USER_VENUE_Rentals ENDPOINTS ---
+// --- USER_VENUE_Rentals ENDPOINTS --- ✅
 
 // Get all user_venue_rentals
 app.get('/api/venue_rentals', async (req, res) => {
@@ -1162,10 +1176,10 @@ app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
     if (!venue_id || !start_date || !end_date) {
       throw new Error("Venue ID, start_date, and end_date are required.");
     }
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(start_date) || !dateRegex.test(end_date)) {
-      throw new Error("Dates must be in 'YYYY-MM-DD' format.");
-    }
+
+    // Check date format
+    validateDateFormat(start_date);
+    validateDateFormat(end_date);
 
     // Parse and validate date range
     const { start, end } = validateDateRange(start_date, end_date);
@@ -1244,7 +1258,7 @@ app.put('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
     );
 
     if (changes === 0) throw new Error("No changes made to the rental.");
-    res.json({ message: "Rental updated successfully" });
+    res.json({ message: "Rental updated successfully." });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1271,127 +1285,104 @@ app.delete('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
 });
 
 
-// --- AVAILABLE_DATES ENDPOINTS ---
+// --- AVAILABLE_DATES ENDPOINTS --- ✅
 
 // Get all available_dates
-app.get('/api/available_dates', (req, res) => {
-  db.all('SELECT * FROM Available_Dates', [], (err, rows) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json({ data: rows });
-  });
+app.get('/api/available_dates', async (req, res) => {
+  try {
+    const dates = await queryDb('SELECT * FROM Available_Dates');
+    res.json({ data: dates });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving available dates." });
+  }
 });
 
 // Create a new available date for a venue
-app.post('/api/available_dates', authenticateToken, (req, res) => {
+app.post('/api/available_dates', authenticateToken, async (req, res) => {
   const { venue_id, available_date } = req.body;
-  const userId = req.user.user_id; // User ID from the token
+  const userId = req.user.user_id;
 
-  // Validate required fields
-  if (!venue_id || !available_date) {
-    return res.status(400).json({ error: "Both venue_id and available_date are required." });
-  }
-
-  // Validate date format (YYYY-MM-DD)
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(available_date)) {
-    return res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
-  }
-
-  // Step 1: Verify ownership of the venue
-  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: "Error verifying venue ownership." });
-    }
-    if (!row) {
-      return res.status(404).json({ error: "Venue not found." });
-    }
-    if (row.owner_id !== userId) {
-      return res.status(403).json({ error: "You do not have permission to modify available dates for this venue." });
+  try {
+    if (!venue_id || !available_date) {
+      throw new Error("Both venue_id and available_date are required.");
     }
 
-    // Step 2: Insert the new available date
-    db.run(
+    validateDateFormat(available_date);
+
+    // Verify ownership of the venue
+    const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
+    if (!venue) throw new Error("Venue not found.");
+    if (venue.owner_id !== userId) throw new Error("You do not have permission to modify available dates for this venue.");
+
+    // Insert the new available date
+    const availability_id = await runDbQuery(
       `INSERT INTO Available_Dates (venue_id, available_date) VALUES (?, ?)`,
-      [venue_id, available_date],
-      function (err) {
-        if (err) {
-          return res.status(500).json({ error: "Error creating available date" });
-        }
-        res.status(201).json({ message: "Available date created successfully", availability_id: this.lastID });
-      }
+      [venue_id, available_date]
     );
-  });
+
+    res.status(201).json({ message: "Available date created successfully", availability_id });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Update an available date
-app.put('/api/available_dates/:id', authenticateToken, (req, res) => {
+app.put('/api/available_dates/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { venue_id, available_date } = req.body;
   const userId = req.user.user_id;
 
-  // Check if the availability belongs to the venue owned by the user
-  db.get(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id], (err, row) => {
-    if (err) {
-      return res.status(500).json({ error: "Error retrieving venue ownership data" });
-    }
-    if (!row || row.owner_id !== userId) {
-      return res.status(403).json({ error: "You do not have permission to update this availability date" });
+  try {
+    if (!venue_id || !available_date) {
+      throw new Error("Both venue_id and available_date are required.");
     }
 
-    // Update the availability date if user has permission
-    db.run(`UPDATE Available_Dates SET venue_id = ?, available_date = ? WHERE availability_id = ?`,
-      [venue_id, available_date, id],
-      function (err) {
-        if (err) {
-          return res.status(400).json({ error: "Error updating availability date" });
-        }
+    validateDateFormat(available_date);
 
-        // Check if any row was updated
-        if (this.changes === 0) {
-          return res.status(404).json({ error: "Availability date not found or no changes made" });
-        }
+    // Check venue ownership
+    const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
+    if (!venue) throw new Error("Venue not found.");
+    if (venue.owner_id !== userId) throw new Error("You do not have permission to update this availability date.");
 
-        res.json({ message: "Availability date updated successfully" });
-      }
+    // Update the availability date
+    const changes = await runDbQuery(
+      `UPDATE Available_Dates SET venue_id = ?, available_date = ? WHERE availability_id = ?`,
+      [venue_id, available_date, id]
     );
-  });
+
+    if (changes === 0) throw new Error("Availability date not found or no changes made.");
+    res.json({ message: "Availability date updated successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // Delete an available date
-app.delete('/api/available_dates/:id', authenticateToken, (req, res) => {
+app.delete('/api/available_dates/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const userId = req.user.user_id;
 
-  // Check if the availability date belongs to a venue owned by the user
-  db.get(`SELECT V.owner_id 
-          FROM Available_Dates AD 
-          JOIN Venues V ON AD.venue_id = V.venue_id 
-          WHERE AD.availability_id = ?`,
-    [id],
-    (err, row) => {
-      if (err) {
-        return res.status(500).json({ error: "Error retrieving availability data" });
-      }
-      if (!row || row.owner_id !== userId) {
-        return res.status(403).json({ error: "You do not have permission to delete this availability date" });
-      }
+  try {
+    // Verify ownership of the venue associated with the available date
+    const row = await getDbRow(
+      `SELECT V.owner_id 
+       FROM Available_Dates AD 
+       JOIN Venues V ON AD.venue_id = V.venue_id 
+       WHERE AD.availability_id = ?`,
+      [id]
+    );
 
-      // Proceed to delete the availability date if ownership is confirmed
-      db.run(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id], function (err) {
-        if (err) {
-          return res.status(500).json({ error: "Error deleting availability date" });
-        }
+    if (!row) throw new Error("Availability date not found.");
+    if (row.owner_id !== userId) throw new Error("You do not have permission to delete this availability date.");
 
-        if (this.changes === 0) {
-          return res.status(404).json({ error: "Availability date not found" });
-        }
+    // Delete the availability date
+    const changes = await runDbQuery(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id]);
 
-        res.json({ message: "Availability date deleted successfully" });
-      });
-    }
-  );
+    if (changes === 0) throw new Error("Availability date not found.");
+    res.json({ message: "Availability date deleted successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 // --- END OF CRUD ENDPOINTS ---

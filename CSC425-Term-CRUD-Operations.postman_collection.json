@@ -1112,8 +1112,8 @@
 									"        pm.expect(events).to.have.property('organizer_id').that.is.a('number');",
 									"        pm.expect(events).to.have.property('name').that.is.a('string');",
 									"        pm.expect(events).to.have.property('description').that.is.a('string');",
-									"        pm.expect(events).to.have.property('event_date_start').that.is.a('string');",
-									"        pm.expect(events).to.have.property('event_date_end').that.is.a('string');",
+									"        pm.expect(events).to.have.property('start_date').that.is.a('string');",
+									"        pm.expect(events).to.have.property('end_date').that.is.a('string');",
 									"        pm.expect(events).to.have.property('created_at').that.is.a('string');",
 									"    });",
 									"});"
@@ -1311,7 +1311,7 @@
 									"",
 									"pm.test(\"Event created successfully\", function () {",
 									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
+									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully.\");",
 									"    pm.expect(responseJson).to.have.property(\"event_id\");",
 									"",
 									"    // Store event_id in collection variables for future use",
@@ -1361,7 +1361,7 @@
 									"",
 									"pm.test(\"Event updated successfully\", function () {",
 									"  const jsonData = pm.response.json();",
-									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
+									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -1408,7 +1408,7 @@
 									"",
 									"pm.test(\"Event deleted successfully\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -1496,7 +1496,7 @@
 									"",
 									"pm.test(\"Event created successfully\", function () {",
 									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully\");",
+									"    pm.expect(responseJson).to.have.property(\"message\", \"Event created successfully.\");",
 									"    pm.expect(responseJson).to.have.property(\"event_id\");",
 									"",
 									"    // Store event_id in collection variables for future use",
@@ -1546,7 +1546,7 @@
 									"",
 									"pm.test(\"Event updated successfully\", function () {",
 									"  const jsonData = pm.response.json();",
-									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully\");",
+									"  pm.expect(jsonData).to.have.property(\"message\", \"Event updated successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -1593,7 +1593,7 @@
 									"",
 									"pm.test(\"Event deleted successfully\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Event deleted successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -1905,7 +1905,7 @@
 									"});",
 									"pm.test(\"Availability date updated successfully\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date updated successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date updated successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -1952,7 +1952,7 @@
 									"",
 									"pm.test(\"Availability date deleted successfully\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date deleted successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Availability date deleted successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -2737,7 +2737,7 @@
 									"// Verify response contains success message",
 									"pm.test(\"Rental updated successfully\", function () {",
 									"    const jsonData = pm.response.json();",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Venue rental updated successfully\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Rental updated successfully.\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -4532,12 +4532,12 @@
 									"script": {
 										"exec": [
 											"// Test for error response when user is not found",
-											"pm.test(\"Status code is 404 if user is not found\", function () {",
-											"    pm.response.to.have.status(404);",
+											"pm.test(\"Status code is 400 if user is not found\", function () {",
+											"    pm.response.to.have.status(400);",
 											"});",
 											"pm.test(\"Response contains error message for user not found\", function () {",
 											"    const jsonData = pm.response.json();",
-											"    pm.expect(jsonData.error).to.eql(\"User not found\");",
+											"    pm.expect(jsonData.error).to.eql(\"User not found.\");",
 											"});",
 											""
 										],
@@ -4585,7 +4585,7 @@
 											"",
 											"pm.test(\"Response contains error message for incorrect password\", function () {",
 											"    const jsonData = pm.response.json();",
-											"    pm.expect(jsonData.error).to.eql(\"Invalid credentials\");",
+											"    pm.expect(jsonData.error).to.eql(\"Invalid credentials.\");",
 											"});"
 										],
 										"type": "text/javascript",
