@@ -28,7 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/venues/:venue_id" element={<VenueDetail />} />
             <Route path="/venues/:venue_id/booking" element={<VenueBooking />} />
             {/* Fallback route for unmatched paths */}
-            <Route path="*" element={<div>404 - Page Not Found</div>} />
+            <Route path="*" element={<strong><br/><br/><br/><br/>404 - Page Not Found</strong>} />
           </Routes>
         </Suspense>
       </Router>

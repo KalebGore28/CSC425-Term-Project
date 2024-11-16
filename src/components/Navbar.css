@@ -217,13 +217,29 @@
 }
 
 .notification-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: #0539b0;
+	border-radius: 10px;
+	margin: 0.5rem;
+}
+
+.notification-item p {
+	color: white;
 	padding: 0.5rem;
-	border-bottom: 1px solid #eee;
+	margin: 0;
+}
+
+.notification-item a {
+	color: white;
+	text-decoration: none;
+	margin-right: 1rem;
 }
 
 .notification-item.unread {
 	font-weight: bold;
-	background: #f0f0f0;
+	background: #0c6fa8;
 }
 
 .notification-dot {

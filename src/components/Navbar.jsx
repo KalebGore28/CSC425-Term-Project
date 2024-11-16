@@ -188,6 +188,24 @@ function Navbar({ children }) {
 		}
 	};
 
+	// Delete notification
+	const deleteNotification = async (id) => {
+		try {
+			await fetch(`http://localhost:5001/api/notifications/${id}`, {
+				method: 'DELETE',
+				credentials: 'include',
+			});
+
+			// Update the state in the frontend
+			setNotifications((prev) =>
+				prev.filter((notif) => notif.id !== id)
+			);
+
+		} catch (error) {
+			console.error('Error deleting notification:', error);
+		}
+	};
+
 	// Provide context value
 	const contextValue = {
 		windowWidth,
@@ -241,8 +259,14 @@ function Navbar({ children }) {
 													<>
 														<button onClick={markNotificationsAsRead}>Mark all as read</button>
 														{notifications.map((notif) => (
-															<div key={notif.id} className={`notification ${notif.status === "Read" ? 'read' : 'unread'}`}>
+															<div key={notif.notification_id} className={`notification-item ${notif.status === "Read" ? 'read' : 'unread'}`}>
 																<p>{notif.message}</p>
+																<a href="#" onClick={(event) => {
+																	event.preventDefault();
+																	deleteNotification(notif.notification_id);
+																}}>
+																	X
+																</a>
 															</div>
 														))}
 													</>
