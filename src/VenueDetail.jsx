@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Navbar, { NavbarContext } from './components/Navbar';
+import { NavbarContext } from './components/Navbar';
 import Calendar from 'react-calendar';
 import Slider from 'react-slick';
 import './VenueDetail.css';
