@@ -9,6 +9,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import ProfilePage from './ProfilePage';
 import VenuePage from './VenuePage';
+import VenueDetail from './VenueDetail';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<LandingPage />} />  {/* Landing page */}
         <Route path="/profile" element={<ProfilePage />} /> {/* Profile page */}
         <Route path="/venues" element={<VenuePage />} /> {/* Venue page */}
+        <Route path="/venues/:venue_id" element={<VenueDetail />} /> {/* Venue detail page */}
       </Routes>
     </Router>
   </React.StrictMode>

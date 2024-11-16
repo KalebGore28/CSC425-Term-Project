@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom'; // Import Link from react-router-dom
 import Navbar from './components/Navbar';
 import './VenuePage.css';
 
@@ -38,18 +39,20 @@ function VenuePage() {
 				) : venues.length > 0 ? (
 					<div className="venue-list">
 						{venues.map((venue) => (
-							<div className="venue-card" key={venue.venue_id}>
-								<img
-									src={`http://localhost:5001/api/images/${venue.thumbnail_image_id}`}
-									alt={venue.name}
-									className="venue-image"
-								/>
-								<h2 className="venue-name">{venue.name}</h2>
-								<p className="venue-location"><strong>Location:</strong> {venue.location}</p>
-								<p className="venue-description">{venue.description}</p>
-								<p className="venue-capacity"><strong>Capacity:</strong> {venue.capacity}</p>
-								<p className="venue-price"><strong>Price:</strong> ${venue.price}</p>
-							</div>
+							<Link to={`/venues/${venue.venue_id}`} key={venue.venue_id} className="venue-card-link">
+								<div className="venue-card">
+									<img
+										src={`http://localhost:5001/api/images/${venue.thumbnail_image_id}`}
+										alt={venue.name}
+										className="venue-image"
+									/>
+									<h2 className="venue-name">{venue.name}</h2>
+									<p className="venue-location"><strong>Location:</strong> {venue.location}</p>
+									<p className="venue-description">{venue.description}</p>
+									<p className="venue-capacity"><strong>Capacity:</strong> {venue.capacity}</p>
+									<p className="venue-price"><strong>Price:</strong> ${venue.price}</p>
+								</div>
+							</Link>
 						))}
 					</div>
 				) : (

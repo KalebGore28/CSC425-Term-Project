@@ -1001,6 +1001,22 @@ app.get('/api/venues', async (req, res) => {
   }
 });
 
+// Get a venue by ID
+app.get('/api/venues/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ?`, [id]);
+    if (!venue) {
+      throw new Error("Venue not found.");
+    }
+
+    res.json(venue);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // Create a new venue
 app.post('/api/venues', authenticateToken, async (req, res) => {
   const { name, location, description, capacity, price } = req.body;
@@ -1289,6 +1305,59 @@ app.get('/api/available_dates', async (req, res) => {
     res.json({ data: dates });
   } catch (error) {
     res.status(500).json({ error: "Error retrieving available dates." });
+  }
+});
+
+// Get available dates for a venue, considering rentals and events
+app.get('/api/venues/:id/available_dates', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if the venue exists
+    const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ?`, [id]);
+    if (!venue) throw new Error("Venue not found.");
+
+    // Fetch all available dates for the venue
+    const availableDates = await queryDb(`SELECT * FROM Available_Dates WHERE venue_id = ?`, [id]);
+
+    // Fetch all rentals for the venue
+    const rentals = await queryDb(
+      `SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`,
+      [id]
+    );
+
+    // Fetch all events for the venue
+    const events = await queryDb(
+      `SELECT start_date, end_date FROM Events WHERE venue_id = ?`,
+      [id]
+    );
+
+    // Remove dates that overlap with rentals or events
+    const filteredDates = availableDates.filter(({ available_date }) => {
+      const date = new Date(available_date);
+
+      // Check if the date conflicts with any rental
+      const rentalConflict = rentals.some(({ start_date, end_date }) => {
+        const rentalStart = new Date(start_date);
+        const rentalEnd = new Date(end_date);
+        return date >= rentalStart && date <= rentalEnd;
+      });
+
+      // Check if the date conflicts with any event
+      const eventConflict = events.some(({ start_date, end_date }) => {
+        const eventStart = new Date(start_date);
+        const eventEnd = new Date(end_date);
+        return date >= eventStart && date <= eventEnd;
+      });
+
+      // Include the date only if it doesn't conflict with rentals or events
+      return !rentalConflict && !eventConflict;
+    });
+
+    // Respond with the filtered dates
+    res.json({ data: filteredDates });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
