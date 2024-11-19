@@ -160,6 +160,7 @@ const createEventsFromRentals = (rentals) => {
 			description: customEvent.description,
 			start_date: rental.start_date,
 			end_date: rental.end_date,
+			invite_only: Math.random() < 0.2 ? 1 : 0, // 50% chance of being invite-only
 		};
 	});
 };
@@ -361,8 +362,17 @@ const insertRentalBooking = (rental) => {
 const insertEvent = (event) => {
 	return new Promise((resolve, reject) => {
 		db.run(
-			`INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
-			[event.venue_id, event.organizer_id, event.name, event.description, event.start_date, event.end_date],
+			`INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			[
+				event.venue_id,
+				event.organizer_id,
+				event.name,
+				event.description,
+				event.start_date,
+				event.end_date,
+				event.invite_only, // New column
+			],
 			function (err) {
 				if (err) return reject('Error adding event: ' + err.message);
 				console.log(`Event added with ID: ${this.lastID} for venue ${event.venue_id}`);

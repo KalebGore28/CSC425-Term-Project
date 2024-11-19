@@ -13,6 +13,7 @@ import VenuePage from './VenuePage';
 import VenueDetail from './VenueDetail';
 import VenueBooking from './VenueBooking';
 import EventPage from './EventPage';
+import EventDetail from './EventDetail';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -29,6 +30,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/venues/:venue_id" element={<VenueDetail />} />
             <Route path="/venues/:venue_id/booking" element={<VenueBooking />} />
             <Route path="/events" element={<EventPage />} />
+            <Route path="/events/:event_id" element={<EventDetail />} />
             {/* Fallback route for unmatched paths */}
             <Route path="*" element={<strong><br/><br/><br/><br/>404 - Page Not Found</strong>} />
           </Routes>

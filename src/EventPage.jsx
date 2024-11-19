@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import "./EventPage.css";
 
 const EventPage = () => {
@@ -62,11 +63,13 @@ const EventPage = () => {
       <section className="event-list">
         {filteredEvents.length > 0 ? (
           filteredEvents.map(event => (
+            console.log(event.event_id),
             <div key={event.event_id} className="event-item">
-              <h2>{event.event_name}</h2>
-              <p>{event.description}</p>
-              <p>Date: {event.start_date}</p>
-              <p>Location: {event.venue_name}, {event.venue_location}</p>
+              <Link to={`/events/${event.event_id}`}>
+                <h2>{event.event_name}</h2>
+                <p>Date: {event.start_date}</p>
+                <p>Location: {event.venue_name}, {event.venue_location}</p>
+              </Link>
             </div>
           ))
         ) : (

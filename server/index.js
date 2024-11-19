@@ -386,7 +386,7 @@ app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
 
 // --- EVENTS ENDPOINTS --- ✅
 
-// Get all events with venue information
+// Get all events with venue information, excluding invite-only events
 app.get('/api/events', async (req, res) => {
   try {
     const events = await queryDb(`
@@ -399,10 +399,43 @@ app.get('/api/events', async (req, res) => {
         Venues.location AS venue_location
       FROM Events
       JOIN Venues ON Events.venue_id = Venues.venue_id
+      WHERE Events.invite_only = 0 -- Exclude invite-only events
     `);
     res.json({ data: events });
   } catch (error) {
     res.status(500).json({ error: "Error retrieving events with venue information." });
+  }
+});
+
+// Get event details by ID
+app.get('/api/events/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const event = await getDbRow(
+      `SELECT 
+         Events.event_id, -- Include the event_id in the SELECT statement
+         Events.name, 
+         Events.description, 
+         Events.start_date, 
+         Events.end_date, 
+         Venues.name AS venue_name, 
+         Venues.location AS venue_location, 
+         Users.name AS organizer_name
+       FROM Events
+       JOIN Venues ON Events.venue_id = Venues.venue_id
+       JOIN Users ON Events.organizer_id = Users.user_id
+       WHERE Events.event_id = ?`,
+      [id]
+    );
+
+    if (!event) {
+      throw new Error("Event not found.");
+    }
+
+    res.json(event);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -580,14 +613,16 @@ app.get('/api/invitations', authenticateToken, async (req, res) => {
   }
 });
 
-// Create an invitation (only accessible by event organizers)
+// Create an invitation (accessible by event organizers or users inviting themselves if not invite-only)
 app.post('/api/invitations', authenticateToken, async (req, res) => {
-  const organizerId = req.user.user_id;
-  const { event_id, email, status = "Sent" } = req.body;
+  const userId = req.user.user_id; // Authenticated user ID
+  const userEmail = req.user.email; // Authenticated user's email from token
+  const { event_id, email = null, status = "Sent" } = req.body;
 
   try {
+    // Fetch event and venue information
     const eventInfo = await getDbRow(
-      `SELECT E.organizer_id, V.owner_id, V.capacity 
+      `SELECT E.organizer_id, V.owner_id, V.capacity, E.invite_only 
        FROM Events AS E 
        JOIN Venues AS V ON E.venue_id = V.venue_id 
        WHERE E.event_id = ?`,
@@ -595,44 +630,106 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
     );
 
     if (!eventInfo) throw new Error("Event not found.");
-    const isOrganizer = eventInfo.organizer_id === organizerId || eventInfo.owner_id === organizerId;
-    if (!isOrganizer) throw new Error("You do not have permission to send invitations for this event.");
 
-    // Check if venue capacity is exceeded for accepted invitations
-    const { capacity } = eventInfo;
+    const { organizer_id, owner_id, capacity, invite_only } = eventInfo;
+
+    // Handle self-invitation if no email is provided
+    if (!email) {
+      // Self-invitation logic
+      if (invite_only) {
+        throw new Error("Self-invitation is not allowed for invite-only events.");
+      }
+
+      // Prevent the event organizer from inviting themselves
+      if (organizer_id === userId) {
+        throw new Error("The event organizer cannot invite themselves.");
+      }
+
+      // Check if the user is already invited
+      const existingInvitation = await getDbRow(
+        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ?`,
+        [event_id, userId]
+      );
+
+      if (existingInvitation) {
+        throw new Error("You are already invited to this event.");
+      }
+
+      // Check venue capacity for accepted invitations
+      const acceptedCount = await getDbRow(
+        `SELECT COUNT(*) AS accepted_count 
+         FROM Invitations 
+         WHERE event_id = ? AND status = 'Accepted'`,
+        [event_id]
+      );
+
+      if (acceptedCount.accepted_count >= capacity) {
+        throw new Error("The venue has reached its maximum capacity.");
+      }
+
+      // Add a self-invitation for the user
+      const selfInvitationId = await runDbQuery(
+        `INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
+        [event_id, userId, "Accepted"]
+      );
+
+      return res.status(201).json({ 
+        message: "You have successfully joined the event.", 
+        invitation_id: selfInvitationId 
+      });
+    }
+
+    // Organizer or owner sending invitations
+    const isOrganizerOrOwner = organizer_id === userId || owner_id === userId;
+
+    if (!isOrganizerOrOwner) {
+      throw new Error("You do not have permission to send invitations for this event.");
+    }
+
+    // Prevent the event organizer from inviting themselves explicitly via email
+    if (email === userEmail) {
+      throw new Error("The event organizer cannot invite themselves.");
+    }
+
+    // Check if the venue capacity is exceeded
     const acceptedCount = await getDbRow(
       `SELECT COUNT(*) AS accepted_count 
        FROM Invitations 
        WHERE event_id = ? AND status = 'Accepted'`,
       [event_id]
     );
+
     if (status === "Accepted" && acceptedCount.accepted_count >= capacity) {
       throw new Error("The venue has reached its maximum capacity.");
     }
 
-    // Check if invitee already exists
+    // Check if the invitee already exists
     let inviteeId = await getDbRow(`SELECT user_id FROM Users WHERE email = ?`, [email]);
+
     if (!inviteeId) {
-      // Create new user if not found
+      // Create a new user if not found
       inviteeId = await runDbQuery(
         `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
         ["New User", email, "PlaceholderPassword"]
       );
     }
 
-    // Create invitation
+    // Create the invitation
     const invitationId = await runDbQuery(
       `INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, ?)`,
       [event_id, inviteeId.user_id || inviteeId, status]
     );
 
-    // Create notification for the invitee
+    // Create a notification for the invitee
     await runDbQuery(
       `INSERT INTO Notifications (user_id, event_id, message) VALUES (?, ?, ?)`,
       [inviteeId.user_id || inviteeId, event_id, `You have been invited to event ID ${event_id}.`]
     );
 
-    res.status(201).json({ message: "Invitation created successfully", invitation_id: invitationId });
+    res.status(201).json({ 
+      message: "Invitation created successfully", 
+      invitation_id: invitationId 
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

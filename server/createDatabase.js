@@ -55,6 +55,7 @@ db.serialize(() => {
     description TEXT,
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
+    invite_only INTEGER DEFAULT 0, -- New column for invite-only status
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE,
     FOREIGN KEY (organizer_id) REFERENCES Users(user_id) ON DELETE CASCADE
