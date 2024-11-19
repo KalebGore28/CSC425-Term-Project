@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
-import { useParams } from "react-router-dom";
-import { NavbarContext } from "./components/Navbar"; // Assuming Navbar provides modal control via context
+import { useParams, useNavigate } from "react-router-dom";
+import { NavbarContext } from "./components/Navbar";
 import "./EventDetail.css";
 
 const EventDetail = () => {
@@ -9,11 +9,12 @@ const EventDetail = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [invitationMessage, setInvitationMessage] = useState("");
+
 	// Use NavbarContext for authentication handling
 	const { toggleAuthModal, currentUser } = useContext(NavbarContext);
+	const navigate = useNavigate();
 
 	useEffect(() => {
-		// Fetch event details from the API
 		const fetchEventDetails = async () => {
 			try {
 				const response = await fetch(`http://localhost:5001/api/events/${event_id}`);
@@ -31,6 +32,10 @@ const EventDetail = () => {
 
 		fetchEventDetails();
 	}, [event_id]);
+
+	const handleBack = () => {
+		navigate(-1); // Navigate to the previous page
+	};
 
 	const handleSelfInvite = async () => {
 		if (!currentUser) {
@@ -75,6 +80,11 @@ const EventDetail = () => {
 
 	return (
 		<div className="event-detail-page">
+			<div className="back-button-container">
+				<button onClick={handleBack} className="back-button">
+					&larr; Back
+				</button>
+			</div>
 			<header className="event-header">
 				<h1>{event.name}</h1>
 				<p>{event.description}</p>

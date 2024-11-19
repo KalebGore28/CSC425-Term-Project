@@ -43,8 +43,11 @@
 
 .event-actions {
 	margin-top: 1rem;
-	display: flex;
 	justify-content: center;
+	align-items: center;
+	flex-direction: column;
+	display: flex;
+	gap: 0.5rem;
 }
 
 .self-invite-button {
@@ -65,8 +68,19 @@
 	margin-top: 10px;
 	font-size: 14px;
 	color: green;
+	text-align: center;
 }
 
 .invitation-message.error {
 	color: red;
+}
+
+.back-button-container {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 1.5rem;
+}
+
+.back-button:hover {
+	background-color: #0056b3;
 }
