@@ -122,3 +122,19 @@
 .delete-button:hover {
 	background-color: #d32f2f;
 }
+
+.create-event-button {
+	background-color: #2196f3;
+	color: white;
+	border: none;
+	padding: 10px 20px;
+	font-size: 16px;
+	border-radius: 5px;
+	cursor: pointer;
+	margin-bottom: 20px;
+	transition: background-color 0.3s ease;
+}
+
+.create-event-button:hover {
+	background-color: #1976d2;
+}

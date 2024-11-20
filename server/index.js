@@ -394,7 +394,7 @@ app.get('/api/events', async (req, res) => {
         Events.event_id, 
         Events.name AS event_name, 
         Events.description, 
-        Events.start_date, 
+        Events.start_date,
         Venues.name AS venue_name, 
         Venues.location AS venue_location
       FROM Events
@@ -407,7 +407,7 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
-// Get all events associated with the authenticated user
+// Get all events where the authenticated user is the organizer
 app.get('/api/users/me/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
@@ -419,16 +419,11 @@ app.get('/api/users/me/events', authenticateToken, async (req, res) => {
         E.start_date,
         E.end_date,
         V.name AS venue_name,
-        V.location AS venue_location,
-        CASE 
-          WHEN E.organizer_id = ? THEN 'Organizer'
-          ELSE 'Attendee'
-        END AS role
+        V.location AS venue_location
       FROM Events E
       JOIN Venues V ON E.venue_id = V.venue_id
-      LEFT JOIN Invitations I ON E.event_id = I.event_id AND I.user_id = ?
-      WHERE E.organizer_id = ? OR (I.user_id = ? AND I.status = 'Accepted')
-    `, [userId, userId, userId, userId]);
+      WHERE E.organizer_id = ?
+    `, [userId]);
 
     res.json({ data: events });
   } catch (error) {
@@ -447,7 +442,8 @@ app.get('/api/events/:id', async (req, res) => {
          Events.name, 
          Events.description, 
          Events.start_date, 
-         Events.end_date, 
+         Events.end_date,
+         Events.invite_only, 
          Venues.name AS venue_name, 
          Venues.location AS venue_location, 
          Users.name AS organizer_name
@@ -487,13 +483,18 @@ app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
 // Create a new event
 app.post('/api/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
-  const { venue_id, name, description, start_date, end_date } = req.body;
+  const { venue_id, name, description, start_date, end_date, invite_only = false } = req.body;
 
   try {
-    if (!venue_id || !name || !description) {
-      throw new Error("Venue ID, name, and description are required.");
+    // Validate required fields
+    if (!venue_id || !name || !description || !start_date || !end_date) {
+      throw new Error("Venue ID, name, description, start_date, and end_date are required.");
     }
 
+    // Validate date range
+    const { start, end } = validateDateRange(start_date, end_date);
+
+    // Check if the venue exists
     const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
     if (!venue) {
       throw new Error("Venue not found.");
@@ -502,33 +503,51 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     const isOwner = venue.owner_id === userId;
 
     if (isOwner) {
-      // Validate and check for date overlaps for owners
-      const { start, end } = validateDateRange(start_date, end_date);
-      const rentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`, [venue_id, userId]);
+      // Owner-specific validation: Check for date overlaps with other rentals
+      const rentals = await queryDb(
+        `SELECT start_date, end_date 
+         FROM Venue_Rentals 
+         WHERE venue_id = ? AND user_id != ?`,
+        [venue_id, userId]
+      );
 
       if (checkOverlap(start, end, rentals)) {
         throw new Error("Event dates overlap with an existing rental by another user.");
       }
 
+      // Insert event for owners
       await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
-        [venue_id, userId, name, description, start_date, end_date]
+        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [venue_id, userId, name, description, start, end, invite_only ? 1 : 0]
+      );
+    } else {
+      // Renter-specific validation: Check if the user has a valid rental
+      const rental = await getDbRow(
+        `SELECT start_date, end_date 
+         FROM Venue_Rentals 
+         WHERE venue_id = ? AND user_id = ? AND end_date >= ?`,
+        [venue_id, userId, new Date()]
       );
 
-    } else {
-      // Validate renter access
-      const rental = await getDbRow(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id = ? AND end_date >= ?`, [venue_id, userId, new Date()]);
       if (!rental) {
         throw new Error("Not authorized to create an event for this venue.");
       }
 
+      // Check if the event dates are within the rental period
+      if (isBefore(start, new Date(rental.start_date)) || isAfter(end, new Date(rental.end_date))) {
+        throw new Error("Event dates must fall within your rental period.");
+      }
+
+      // Insert event for renters
       await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?)`,
-        [venue_id, userId, name, description, rental.start_date, rental.end_date]
+        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [venue_id, userId, name, description, start, end, invite_only ? 1 : 0]
       );
     }
 
-    // Get the event ID 
+    // Fetch the newly created event ID
     const event = await getDbRow(`SELECT last_insert_rowid() AS event_id`);
 
     res.status(201).json({ message: "Event created successfully.", event_id: event.event_id });
@@ -539,34 +558,82 @@ app.post('/api/events', authenticateToken, async (req, res) => {
 
 // Update event information
 app.put('/api/events/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const { name, description, start_date, end_date } = req.body;
-  const userId = req.user.user_id;
+  const { id } = req.params; // Event ID
+  const { name, description, start_date, end_date, invite_only } = req.body; // Event data
+  const userId = req.user.user_id; // Authenticated user ID
 
   try {
-    const { isOrganizer, isOwner, event } = await checkEventAccess(id, userId);
+    // Check if the user has access to the event
+    const event = await getDbRow(
+      `SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`,
+      [id]
+    );
 
-    if (isOrganizer && !isOwner && (start_date || end_date)) {
-      throw new Error("Renters cannot update event dates.");
+    if (!event) {
+      throw new Error("Event not found.");
     }
 
-    if (isOwner && start_date && end_date) {
-      const { start, end } = validateDateRange(start_date, end_date);
-      const rentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ? AND user_id != ?`, [event.venue_id, userId]);
+    // Ensure the user is the organizer
+    if (event.organizer_id !== userId) {
+      throw new Error("You are not authorized to update this event.");
+    }
 
-      if (checkOverlap(start, end, rentals)) {
-        throw new Error("Event dates conflict with existing rentals.");
+    // Initialize query components
+    const fieldsToUpdate = [];
+    const queryParams = [];
+
+    // Update the name if provided
+    if (name) {
+      fieldsToUpdate.push("name = ?");
+      queryParams.push(name);
+    }
+
+    // Update the description if provided
+    if (description) {
+      fieldsToUpdate.push("description = ?");
+      queryParams.push(description);
+    }
+
+    // Update the start_date and end_date if both are provided
+    if (start_date && end_date) {
+      const { start, end } = validateDateRange(start_date, end_date);
+
+      // Check for date conflicts with other rentals or events at the same venue
+      const conflicts = await queryDb(
+        `SELECT 1 
+         FROM Events 
+         WHERE venue_id = ? 
+         AND event_id != ? 
+         AND ((start_date <= ? AND end_date >= ?) OR (start_date <= ? AND end_date >= ?))`,
+        [event.venue_id, id, end, start, end, start]
+      );
+
+      if (conflicts.length > 0) {
+        throw new Error("The updated event dates conflict with another event.");
       }
 
-      await runDbQuery(
-        `UPDATE Events SET name = ?, description = ?, start_date = ?, end_date = ? WHERE event_id = ?`,
-        [name, description, start_date, end_date, id]
-      );
-    } else {
-      await runDbQuery(
-        `UPDATE Events SET name = ?, description = ? WHERE event_id = ?`,
-        [name, description, id]
-      );
+      fieldsToUpdate.push("start_date = ?", "end_date = ?");
+      queryParams.push(start_date, end_date);
+    }
+
+    // Update the invite_only field if provided
+    if (typeof invite_only !== "undefined") {
+      fieldsToUpdate.push("invite_only = ?");
+      queryParams.push(invite_only ? 1 : 0); // Convert to 1/0 for boolean values
+    }
+
+    if (fieldsToUpdate.length === 0) {
+      throw new Error("No valid fields to update.");
+    }
+
+    queryParams.push(id); // Add event ID to the end of the params
+
+    // Execute the update query
+    const query = `UPDATE Events SET ${fieldsToUpdate.join(", ")} WHERE event_id = ?`;
+    const changes = await runDbQuery(query, queryParams);
+
+    if (changes === 0) {
+      throw new Error("No changes made to the event.");
     }
 
     res.json({ message: "Event updated successfully." });

@@ -1,0 +1,80 @@
+.new-event-page {
+	padding: 20px;
+	text-align: center;
+	margin-top: 8rem;
+}
+
+.new-event-page h1 {
+	margin-bottom: 20px;
+}
+
+.new-event-form {
+	max-width: 600px;
+	margin: 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 15px;
+}
+
+.new-event-form label {
+	display: flex;
+	flex-direction: column;
+	text-align: left;
+}
+
+.new-event-form input,
+.new-event-form textarea,
+.new-event-form select {
+	padding: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	font-size: 16px;
+}
+
+.new-event-form textarea {
+	resize: none;
+	height: 100px;
+}
+
+.form-actions {
+	display: flex;
+	justify-content: space-between;
+}
+
+.save-button {
+	background-color: #4caf50;
+	color: white;
+	padding: 10px 20px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.cancel-button {
+	background-color: #f44336;
+	color: white;
+	padding: 10px 20px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.save-button:hover {
+	background-color: #45a049;
+}
+
+.cancel-button:hover {
+	background-color: #d32f2f;
+}
+
+.new-event-form label {
+	display: flex;
+	flex-direction: column;
+	text-align: left;
+	margin-bottom: 15px;
+}
+
+.new-event-form input[type="checkbox"] {
+	margin-top: 10px;
+	width: auto;
+}

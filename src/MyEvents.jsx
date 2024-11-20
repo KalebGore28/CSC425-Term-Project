@@ -55,6 +55,12 @@ function MyEvents() {
 	return (
 		<div className="my-events-page">
 			<h1>My Events</h1>
+			<button
+				className="create-event-button"
+				onClick={() => navigate("/events/new")}
+			>
+				Create a New Event
+			</button>
 			{events.length > 0 ? (
 				<div className="events-grid">
 					{events.map((event) => (
@@ -64,7 +70,6 @@ function MyEvents() {
 								<p><strong>Venue:</strong> {event.venue_name}</p>
 								<p><strong>Location:</strong> {event.venue_location}</p>
 								<p><strong>Dates:</strong> {event.start_date} - {event.end_date}</p>
-								<p><strong>Role:</strong> {event.role}</p>
 							</div>
 							<div className="event-actions">
 								<button
@@ -84,7 +89,7 @@ function MyEvents() {
 					))}
 				</div>
 			) : (
-				<p>You have no events. <button onClick={() => navigate("/events/new")}>Create a new event</button></p>
+				<p>You have no events yet.</p>
 			)}
 		</div>
 	);
