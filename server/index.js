@@ -443,12 +443,13 @@ app.get('/api/events/:id', async (req, res) => {
   try {
     const event = await getDbRow(
       `SELECT 
-         Events.event_id, -- Include the event_id in the SELECT statement
+         Events.event_id,
          Events.name, 
          Events.description, 
          Events.start_date, 
          Events.end_date,
          Events.invite_only,
+         Events.organizer_id, 
          Venues.name AS venue_name, 
          Venues.location AS venue_location, 
          Users.name AS organizer_name
@@ -464,6 +465,62 @@ app.get('/api/events/:id', async (req, res) => {
     }
 
     res.json(event);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get all attendees for an event
+app.get('/api/events/:event_id/attendees', authenticateToken, async (req, res) => {
+  const { event_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Check user access to event attendees
+    await verifyEventAccess(event_id, user_id);
+
+    // Fetch attendees for the event, including their invitation status
+    const attendees = await queryDb(
+      `SELECT 
+         Users.user_id, 
+         Users.name, 
+         Invitations.status 
+       FROM Invitations 
+       JOIN Users ON Invitations.user_id = Users.user_id 
+       WHERE Invitations.event_id = ?`,
+      [event_id]
+    );
+
+    res.json({ data: attendees });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Remove an attendee from the event (organizers only)
+app.delete('/api/events/:event_id/attendees/:user_id', authenticateToken, async (req, res) => {
+  const { event_id, user_id } = req.params; // Ensure these are correctly extracted
+  const organizerId = req.user.user_id;
+
+  try {
+    // Check if the current user is the organizer of the event
+    const event = await getDbRow(`SELECT organizer_id FROM Events WHERE event_id = ?`, [event_id]);
+    if (!event || event.organizer_id !== organizerId) {
+      throw new Error("You are not authorized to remove attendees from this event.");
+    }
+
+    // Ensure user_id is treated as a string or number properly
+    if (!/^\d+$/.test(user_id)) {
+      throw new Error("Invalid user_id format.");
+    }
+
+    // Delete the attendee from the Invitations table
+    await runDbQuery(
+      `DELETE FROM Invitations WHERE event_id = ? AND user_id = ?`,
+      [event_id, parseInt(user_id)] // Convert user_id to an integer
+    );
+
+    res.status(200).json({ message: "Attendee removed successfully." });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -489,7 +546,6 @@ app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
 app.post('/api/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { venue_id, name, description, start_date, end_date, invite_only = false } = req.body;
-  console.log(req.body);
 
   try {
     // Validate required fields
@@ -567,7 +623,6 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
   const { id } = req.params; // Event ID
   const { name, description, start_date, end_date, invite_only } = req.body; // Event data
   const userId = req.user.user_id; // Authenticated user ID
-  console.log(req.body);
 
   try {
     // Check if the user has access to the event

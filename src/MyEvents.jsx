@@ -79,6 +79,12 @@ function MyEvents() {
 									Edit
 								</button>
 								<button
+									onClick={() => navigate(`/events/${event.event_id}/view`)}
+									className="view-button"
+								>
+									View
+								</button>
+								<button
 									onClick={() => handleDelete(event.event_id)}
 									className="delete-button"
 								>

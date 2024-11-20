@@ -1,0 +1,181 @@
+/* General Styling */
+.event-view-container {
+	display: flex;
+	height: calc(100vh - 5rem);
+	margin-top: 5rem;
+	overflow: hidden;
+}
+
+.content-area {
+	flex: 1;
+	padding: 20px;
+	overflow-y: auto;
+}
+
+.tab-content h1,
+.tab-content h2 {
+	margin-bottom: 15px;
+}
+
+.tab-content ul {
+	list-style: none;
+	padding: 0;
+}
+
+.tab-content li {
+	padding: 10px;
+	margin-bottom: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	background-color: #fff;
+}
+
+.error-message {
+	color: red;
+	font-weight: bold;
+}
+
+/* Left Menu */
+.left-menu {
+	background-color: #f4f4f4;
+	width: 250px;
+	padding: 20px;
+	border-right: 1px solid #ddd;
+	display: flex;
+	flex-direction: column;
+	/* Stack child elements vertically */
+	justify-content: space-between;
+	/* Push the back button to the bottom */
+	height: 100%;
+	/* Full height of the container */
+	box-sizing: border-box;
+	overflow-y: auto;
+	/* Allow scrolling if content exceeds height */
+}
+
+/* Grouped Buttons */
+.menu-group {
+	display: flex;
+	flex-direction: column;
+	/* Stack the buttons vertically */
+	gap: 15px;
+	/* Add spacing between the buttons */
+}
+
+/* Menu Item Buttons */
+.menu-item {
+	background-color: #fff;
+	border: 1px solid #ccc;
+	padding: 10px 15px;
+	cursor: pointer;
+	border-radius: 5px;
+	text-align: left;
+	font-size: 16px;
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.menu-item.active {
+	background-color: #007bff;
+	color: white;
+	border-color: #007bff;
+}
+
+.menu-item:hover {
+	background-color: #f0f0f0;
+}
+
+/* Back Button */
+.back-button {
+	background-color: #ff5c5c;
+	color: white;
+	border: none;
+	padding: 10px;
+	cursor: pointer;
+	border-radius: 5px;
+	font-size: 16px;
+	transition: background-color 0.3s ease;
+	margin-top: auto;
+	/* Ensures the back button remains at the bottom */
+}
+
+.back-button:hover {
+	background-color: #e04c4c;
+}
+
+.attendee-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px;
+	margin-bottom: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	background-color: #fff;
+}
+
+.remove-attendee-button {
+	background-color: #ff5c5c;
+	color: white;
+	border: none;
+	padding: 5px 10px;
+	cursor: pointer;
+	border-radius: 5px;
+	font-size: 14px;
+	transition: background-color 0.3s ease;
+}
+
+.remove-attendee-button:hover {
+	background-color: #e04c4c;
+}
+
+/* Community Post Styling */
+.post-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 10px;
+	margin-bottom: 10px;
+	border: 1px solid #ddd;
+	border-radius: 5px;
+	background-color: #fff;
+}
+
+.post-actions button {
+	background-color: #ff5c5c;
+	color: white;
+	border: none;
+	padding: 5px 10px;
+	cursor: pointer;
+	border-radius: 5px;
+	font-size: 14px;
+	transition: background-color 0.3s ease;
+}
+
+.post-actions button:hover {
+	background-color: #e04c4c;
+}
+
+.filter-buttons {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+}
+
+.filter-button {
+	background-color: #f0f0f0;
+	border: 1px solid #ccc;
+	padding: 5px 10px;
+	cursor: pointer;
+	border-radius: 5px;
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.filter-button.active {
+	background-color: #007bff;
+	color: white;
+	border-color: #007bff;
+}
+
+.filter-button:hover {
+	background-color: #e0e0e0;
+}
