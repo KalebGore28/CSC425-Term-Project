@@ -1,6 +1,6 @@
 // src/components/Navbar.jsx
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import './Navbar.css';
 
 // Create a Context for Navbar
@@ -243,7 +243,7 @@ function Navbar({ children }) {
 								<div className="link-container">
 									<a href="/venues" className="nav-link">Explore Venues</a>
 									<a href="/events" className="nav-link">Events</a>
-									<a href="/new-venue" className="nav-link">List a Venue</a>
+									<a href="/list-venue" className="nav-link">List a Venue</a>
 								</div>
 								{currentUser ? (
 									<>
@@ -295,7 +295,7 @@ function Navbar({ children }) {
 								<div className={`dropdown-menu ${isDropdownMenuOpen ? 'open' : ''}`}>
 									<a href="/venues" className="nav-link">Explore Venues</a>
 									<a href="/events" className="nav-link">Events</a>
-									<a href="/new-venue" className="nav-link">List a Venue</a>
+									<a href="/list-venue" className="nav-link">List a Venue</a>
 									{currentUser ? (
 										<>
 											<a href="/profile" className="nav-link">My Profile</a>

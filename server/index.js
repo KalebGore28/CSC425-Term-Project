@@ -673,9 +673,9 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
         [event_id, userId, "Accepted"]
       );
 
-      return res.status(201).json({ 
-        message: "You have successfully joined the event.", 
-        invitation_id: selfInvitationId 
+      return res.status(201).json({
+        message: "You have successfully joined the event.",
+        invitation_id: selfInvitationId
       });
     }
 
@@ -726,9 +726,9 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
       [inviteeId.user_id || inviteeId, event_id, `You have been invited to event ID ${event_id}.`]
     );
 
-    res.status(201).json({ 
-      message: "Invitation created successfully", 
-      invitation_id: invitationId 
+    res.status(201).json({
+      message: "Invitation created successfully",
+      invitation_id: invitationId
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -1278,35 +1278,56 @@ app.get('/api/images/:id', async (req, res) => {
   }
 });
 
-// Upload an image for a venue
-app.post('/api/venues/:venue_id/image', authenticateToken, upload.single('image'), async (req, res) => {
+// Get all images for a venue
+app.get('/api/venues/:venue_id/images', async (req, res) => {
+  const { venue_id } = req.params;
+
+  try {
+    const images = await queryDb(
+      `SELECT image_url FROM Images WHERE venue_id = ?`,
+      [venue_id]
+    );
+
+    if (!images || images.length === 0) {
+      return res.status(404).json({ error: "No images found for this venue." });
+    }
+
+    res.status(200).json({ images: images.map((image) => image.image_url) });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch images for the venue." });
+  }
+});
+
+// Upload multiple images for a venue
+app.post('/api/venues/:venue_id/images', authenticateToken, upload.array('images', 10), async (req, res) => {
   const { venue_id } = req.params;
   const user_id = req.user.user_id;
-  const filePath = req.file ? `/uploads/${req.file.filename}` : null;
-  const { image_url } = req.body;
+  const files = req.files; // Array of uploaded files
 
   try {
     // Validate the request payload
-    if (!filePath && !image_url) {
-      throw new Error("An image file or image URL is required.");
+    if (!files || files.length === 0) {
+      throw new Error("At least one image is required.");
     }
 
     // Check if the venue exists and is owned by the user
     const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [venue_id, user_id]);
     if (!venue) {
-      throw new Error("Venue not found or unauthorized to add image.");
+      throw new Error("Venue not found or unauthorized to add images.");
     }
 
-    // Use the uploaded file path or provided image URL
-    const imagePath = filePath || image_url;
-
-    // Insert the image into the database
-    const image_id = await runDbQuery(`INSERT INTO Images (venue_id, image_url) VALUES (?, ?)`, [venue_id, imagePath]);
+    // Insert each image into the database
+    const insertPromises = files.map((file) =>
+      runDbQuery(
+        `INSERT INTO Images (venue_id, image_url) VALUES (?, ?)`,
+        [venue_id, `/uploads/${file.filename}`]
+      )
+    );
+    await Promise.all(insertPromises);
 
     res.status(201).json({
-      message: "Image uploaded successfully.",
-      image_id,
-      image_url: imagePath,
+      message: "Images uploaded successfully.",
+      images: files.map((file) => `/uploads/${file.filename}`),
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
