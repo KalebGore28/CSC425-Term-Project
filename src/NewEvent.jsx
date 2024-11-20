@@ -62,6 +62,7 @@ function NewEvent() {
 				const day = String(d.getDate()).padStart(2, "0");
 				return `${year}-${month}-${day}`;
 			};
+			console.log(formatDate(formData.start_date), formatDate(formData.end_date));
 
 			const formattedData = {
 				...formData,

@@ -20,6 +20,7 @@
 	overflow: hidden;
 	transition: box-shadow 0.3s ease, transform 0.3s ease;
 	background-color: #fff;
+	max-width: 300px;
 }
 
 .event-card:hover {

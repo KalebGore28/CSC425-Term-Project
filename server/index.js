@@ -137,21 +137,26 @@ const runDbQuery = (sql, params = []) => {
 
 // Validators
 const validateDateRange = (start_date, end_date) => {
-  const today = new Date();
-  const start = parseISO(start_date);
+  const start = parseISO(start_date); // Ensure the date is parsed as a valid ISO date
   const end = parseISO(end_date);
 
-  if (isBefore(start, today)) {
+  if (isNaN(start) || isNaN(end)) {
+    throw new Error("Invalid date format. Dates must be in YYYY-MM-DD format.");
+  }
+
+  if (isBefore(start, new Date())) {
     throw new Error("Start date cannot be in the past.");
   }
-  if (isBefore(end, today)) {
-    throw new Error("End date cannot be in the past.");
-  }
+
   if (isAfter(start, end)) {
     throw new Error("Start date cannot be after the end date.");
   }
 
-  return { start, end };
+  // Format dates to YYYY-MM-DD for consistent storage
+  return {
+    start: format(start, "yyyy-MM-dd"),
+    end: format(end, "yyyy-MM-dd"),
+  };
 };
 
 const checkOverlap = (start, end, rentals) => {
@@ -443,7 +448,7 @@ app.get('/api/events/:id', async (req, res) => {
          Events.description, 
          Events.start_date, 
          Events.end_date,
-         Events.invite_only, 
+         Events.invite_only,
          Venues.name AS venue_name, 
          Venues.location AS venue_location, 
          Users.name AS organizer_name
@@ -484,6 +489,7 @@ app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
 app.post('/api/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { venue_id, name, description, start_date, end_date, invite_only = false } = req.body;
+  console.log(req.body);
 
   try {
     // Validate required fields
@@ -561,6 +567,7 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
   const { id } = req.params; // Event ID
   const { name, description, start_date, end_date, invite_only } = req.body; // Event data
   const userId = req.user.user_id; // Authenticated user ID
+  console.log(req.body);
 
   try {
     // Check if the user has access to the event
