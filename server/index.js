@@ -407,6 +407,35 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+// Get all events associated with the authenticated user
+app.get('/api/users/me/events', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    const events = await queryDb(`
+      SELECT 
+        E.event_id,
+        E.name AS event_name,
+        E.start_date,
+        E.end_date,
+        V.name AS venue_name,
+        V.location AS venue_location,
+        CASE 
+          WHEN E.organizer_id = ? THEN 'Organizer'
+          ELSE 'Attendee'
+        END AS role
+      FROM Events E
+      JOIN Venues V ON E.venue_id = V.venue_id
+      LEFT JOIN Invitations I ON E.event_id = I.event_id AND I.user_id = ?
+      WHERE E.organizer_id = ? OR (I.user_id = ? AND I.status = 'Accepted')
+    `, [userId, userId, userId, userId]);
+
+    res.json({ data: events });
+  } catch (error) {
+    res.status(500).json({ error: "Error retrieving events." });
+  }
+});
+
 // Get event details by ID
 app.get('/api/events/:id', async (req, res) => {
   const { id } = req.params;
@@ -1139,10 +1168,20 @@ app.delete('/api/users/me', authenticateToken, async (req, res) => {
 
 // --- VENUES ENDPOINTS --- ✅
 
-// Get all venues
+// Get all venues with their first image (thumbnail)
 app.get('/api/venues', async (req, res) => {
   try {
-    const venues = await queryDb('SELECT * FROM Venues');
+    const venues = await queryDb(`
+      SELECT 
+        V.venue_id, 
+        V.name, 
+        V.location, 
+        V.description, 
+        V.capacity, 
+        V.price, 
+        (SELECT image_url FROM Images WHERE Images.venue_id = V.venue_id LIMIT 1) AS thumbnail_image
+      FROM Venues V
+    `);
     res.json({ data: venues });
   } catch (error) {
     res.status(500).json({ error: "Error retrieving venues." });
@@ -1250,33 +1289,32 @@ app.delete('/api/venues/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// --- VENUE IMAGES ENDPOINTS --- 
-
-// Get venue images
-app.get('/api/images/:id', async (req, res) => {
-  const { id } = req.params;
+// Get all venues owned by the authenticated user
+app.get('/api/users/me/venues', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
 
   try {
-    // Fetch the image URL from the database
-    const row = await getDbRow(`SELECT image_url FROM Images WHERE image_id = ?`, [id]);
-    if (!row || !row.image_url) {
-      throw new Error("Image not found");
-    }
+    const venues = await queryDb(
+      `SELECT 
+        V.venue_id, 
+        V.name, 
+        V.location, 
+        V.description, 
+        V.capacity, 
+        V.price, 
+        (SELECT image_url FROM Images WHERE Images.venue_id = V.venue_id LIMIT 1) AS thumbnail_image
+       FROM Venues V
+       WHERE V.owner_id = ?`,
+      [userId]
+    );
 
-    const imagePath = path.join(__dirname, row.image_url);
-
-    // Check if the file exists
-    if (!fs.existsSync(imagePath)) {
-      console.error("File not found:", imagePath);
-      throw new Error("Image file not found on server");
-    }
-
-    // Serve the image file
-    res.sendFile(imagePath);
+    res.json({ data: venues });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(500).json({ error: "Error retrieving your venues." });
   }
 });
+
+// --- VENUE IMAGES ENDPOINTS --- 
 
 // Get all images for a venue
 app.get('/api/venues/:venue_id/images', async (req, res) => {

@@ -1,0 +1,124 @@
+.my-events-page {
+	padding: 20px;
+	text-align: center;
+	margin-top: 8rem;
+}
+
+.my-events-page h1 {
+	margin-bottom: 20px;
+}
+
+.events-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 20px;
+}
+
+.event-card {
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	overflow: hidden;
+	transition: box-shadow 0.3s ease, transform 0.3s ease;
+	background-color: #fff;
+}
+
+.event-card:hover {
+	box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+	transform: translateY(-5px);
+}
+
+.event-info {
+	padding: 15px;
+	text-align: left;
+}
+
+.event-info h2 {
+	margin: 10px 0;
+	font-size: 20px;
+}
+
+.event-info p {
+	margin: 5px 0;
+	font-size: 14px;
+	color: #555;
+}
+
+.event-actions {
+	display: flex;
+	justify-content: space-between;
+	padding: 10px 15px;
+	border-top: 1px solid #ddd;
+}
+
+.view-button,
+.edit-button,
+.delete-button {
+	text-decoration: none;
+	padding: 8px 15px;
+	font-size: 14px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.view-button {
+	background-color: #2196f3;
+	color: white;
+}
+
+.edit-button {
+	background-color: #4caf50;
+	color: white;
+}
+
+.delete-button {
+	background-color: #f44336;
+	color: white;
+}
+
+.view-button:hover {
+	background-color: #1976d2;
+}
+
+.edit-button:hover {
+	background-color: #45a049;
+}
+
+.delete-button:hover {
+	background-color: #d32f2f;
+}
+
+.event-actions {
+	display: flex;
+	justify-content: space-between;
+	padding: 10px 15px;
+	border-top: 1px solid #ddd;
+}
+
+.edit-button,
+.delete-button {
+	text-decoration: none;
+	padding: 8px 15px;
+	font-size: 14px;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.edit-button {
+	background-color: #4caf50;
+	color: white;
+}
+
+.delete-button {
+	background-color: #f44336;
+	color: white;
+}
+
+.edit-button:hover {
+	background-color: #45a049;
+}
+
+.delete-button:hover {
+	background-color: #d32f2f;
+}

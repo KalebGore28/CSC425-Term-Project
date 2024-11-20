@@ -40,9 +40,13 @@ function VenuePage() {
 							<Link to={`/venues/${venue.venue_id}`} key={venue.venue_id} className="venue-card-link">
 								<div className="venue-card">
 									<img
-										src={`http://localhost:5001/api/images/${venue.thumbnail_image_id}`}
+										src={`http://localhost:5001${venue.thumbnail_image}`}
 										alt={venue.name}
 										className="venue-image"
+										onError={(e) => {
+											e.target.onerror = null;
+											e.target.src = '/fallback-image.webp'; // Optional fallback image
+										}}
 									/>
 									<h2 className="venue-name">{venue.name}</h2>
 									<p className="venue-location"><strong>Location:</strong> {venue.location}</p>

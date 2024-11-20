@@ -281,6 +281,8 @@ function Navbar({ children }) {
 											</div>
 											<div className={`profile-menu ${isProfileMenuVisible ? 'open' : ''}`}>
 												<a href="/profile" className="profile-link">My Profile</a>
+												<a href="/my-venues" className="nav-link">My Venues</a>
+												<a href="/my-events" className="nav-link">My Events</a>
 												<a href="#" className="profile-link" onClick={handleLogout}>Log Out</a>
 											</div>
 										</div>
@@ -299,6 +301,8 @@ function Navbar({ children }) {
 									{currentUser ? (
 										<>
 											<a href="/profile" className="nav-link">My Profile</a>
+											<a href="/my-venues" className="nav-link">My Venues</a>
+											<a href="/my-events" className="nav-link">My Events</a>
 											<a href="#" className="nav-link" onClick={handleLogout}>Log Out</a>
 										</>
 									) : (
