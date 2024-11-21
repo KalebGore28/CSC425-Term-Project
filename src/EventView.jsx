@@ -479,7 +479,18 @@ function EventView() {
 														onChange={(e) => setReplyContent(e.target.value)}
 														placeholder="Write your reply here..."
 													/>
-													<button type="submit">Post Reply</button>
+													<div className="reply-buttons">
+														<button type="submit">Post Reply</button>
+														<button
+															type="button"
+															onClick={() => {
+																setReplyContent("");
+																setReplyingTo(null);
+															}}
+														>
+															Cancel
+														</button>
+													</div>
 												</form>
 											)}
 											{/* Replies Section */}

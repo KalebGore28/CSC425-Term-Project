@@ -50,7 +50,7 @@ function CompleteSignup() {
 
 			setSuccess(true);
 			setError("");
-			setTimeout(() => navigate("/home"), 3000); // Redirect to home after 3 seconds
+			setTimeout(() => navigate("/"), 3000); // Redirect to home after 3 seconds
 		} catch (err) {
 			setError(err.message);
 		}
