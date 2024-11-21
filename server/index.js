@@ -546,13 +546,18 @@ app.get('/api/posts/:post_id/replies', authenticateToken, async (req, res) => {
   const { post_id } = req.params;
 
   try {
+    // Fetch replies for the given post
     const replies = await queryDb(
-      `SELECT Community_Posts.post_id, Community_Posts.content, Community_Posts.created_at, 
-              Community_Posts.like_count, Users.name AS user_name 
-       FROM Community_Posts
-       JOIN Users ON Community_Posts.user_id = Users.user_id
-       WHERE Community_Posts.parent_post_id = ?
-       ORDER BY Community_Posts.created_at ASC`,
+      `SELECT 
+        CP.post_id, 
+        CP.content, 
+        CP.created_at, 
+        CP.like_count, 
+        CP.user_id, -- Include user_id here
+        U.name AS user_name
+       FROM Community_Posts CP
+       JOIN Users U ON CP.user_id = U.user_id
+       WHERE CP.parent_post_id = ?`,
       [post_id]
     );
 

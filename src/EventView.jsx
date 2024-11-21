@@ -458,7 +458,8 @@ function EventView() {
 																)}
 															</div>
 														</li>
-													))}
+													)
+													)}
 												</ul>
 											)}
 										</div>
