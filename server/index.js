@@ -12,12 +12,47 @@ const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { v4: uuidv4 } = require('uuid'); // For generating unique tokens
+const crypto = require('crypto');
+const axios = require('axios');
 require('dotenv').config(); // Load environment variables
 
 const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
 
 // Initialize Express app
 const app = express();
+
+// Send email using EmailJS API
+async function sendEmail(recipientEmail, templateParams) {
+  const serviceId = process.env.EMAILJS_SERVICE_ID;
+  const templateId = process.env.EMAILJS_TEMPLATE_ID;
+  const userId = process.env.EMAILJS_USER_ID;
+  const accessToken = process.env.EMAILJS_ACCESS_TOKEN;
+
+  const payload = {
+    service_id: serviceId,
+    template_id: templateId,
+    user_id: userId,
+    accessToken: accessToken,
+    template_params: {
+      to_email: recipientEmail,
+      ...templateParams, // Add any dynamic template parameters
+    },
+  };
+
+  try {
+    const response = await axios.post('https://api.emailjs.com/api/v1.0/email/send', payload, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log('Email sent successfully:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error sending email:', error.response?.data || error.message);
+    throw new Error('Failed to send email.');
+  }
+}
 
 // Load configuration
 const PORT = process.env.PORT || 5001;
@@ -1138,7 +1173,7 @@ app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all invitations for the authenticated user
+// Get all invitations for the authenticated user - ✅
 app.get('/api/users/me/invites', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
@@ -1164,7 +1199,7 @@ app.get('/api/users/me/invites', authenticateToken, async (req, res) => {
   }
 });
 
-// Accept an invitation
+// Accept an invitation - ✅
 app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res) => {
   const { event_id } = req.params;
   const user_id = req.user.user_id;
@@ -1184,7 +1219,7 @@ app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res
   }
 });
 
-// Fetch accepted invites for the authenticated user
+// Fetch accepted invites for the authenticated user - ✅
 app.get('/api/users/me/accepted-invites', authenticateToken, async (req, res) => {
   const user_id = req.user.user_id;
 
@@ -1207,6 +1242,131 @@ app.get('/api/users/me/accepted-invites', authenticateToken, async (req, res) =>
     res.json({ data: events });
   } catch (error) {
     res.status(500).json({ error: "Error fetching accepted invites." });
+  }
+});
+
+// Send an invitation to a user for an event - ✅
+app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => {
+  const { event_id } = req.params;
+  const { email } = req.body;
+  const organizer_id = req.user.user_id;
+
+  try {
+    if (!email) {
+      throw new Error("Email is required to send an invitation.");
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Invalid email format.');
+    }
+
+    // Check if the event exists and if the user is the organizer
+    const event = await getDbRow(`SELECT * FROM Events WHERE event_id = ?`, [event_id]);
+    if (!event) throw new Error("Event not found.");
+    if (event.organizer_id !== organizer_id) {
+      throw new Error("Only the organizer can send invitations for this event.");
+    }
+
+    // Prevent organizer from inviting themselves
+    if (email === req.user.email) {
+      throw new Error("You cannot invite yourself to your own event.");
+    }
+
+    // Check if the email belongs to an existing user
+    let user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
+
+    if (!user) {
+      // Create a new user with a temporary password
+      const temporaryPassword = crypto.randomBytes(12).toString('hex');
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+      const newUserId = await runDbQuery(
+        `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+        ["New User", email, hashedPassword]
+      );
+      user = { user_id: newUserId };
+      // Generate a unique token for completing the profile
+      const token = uuidv4();
+      await runDbQuery(
+        `INSERT INTO Tokens (user_id, token) VALUES (?, ?)`,
+        [user.user_id, token]
+      );
+
+      // Construct the invite link and send email
+      const baseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+      const inviteLink = `${baseUrl}/complete-signup?token=${token}`;
+      await sendEmail(email, {
+        subject: "You're Invited!",
+        event_name: event.name,
+        event_start_date: event.start_date,
+        event_end_date: event.end_date,
+        event_venue_name: event.venue_name,
+        event_venue_location: event.venue_location,
+        invite_link: inviteLink,
+      });
+    } else {
+      // If the user exists, check for duplicate invitations
+      const existingInvitation = await getDbRow(
+        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ?`,
+        [event_id, user.user_id]
+      );
+      if (existingInvitation) {
+        throw new Error("This user has already been invited to the event.");
+      }
+
+      await runDbQuery(
+        `INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, "Sent")`,
+        [event_id, user.user_id]
+      );
+
+      // Notify the existing user
+      // await sendEmail(email, {
+      //   subject: "You're Invited!",
+      //   html: `
+      //     <p>You have been invited to the event <b>${event.name}</b>!</p>
+      //     <p>Log in to your account to view the details.</p>
+      //   `,
+      //   text: `You have been invited to the event "${event.name}". Log in to your account to view the details.`,
+      // });
+    }
+
+    res.status(201).json({ message: "Invitation sent successfully!" });
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Complete user registration after receiving an invitation - ✅
+app.post('/api/users/complete-signup', async (req, res) => {
+  const { token, name, password } = req.body;
+
+  try {
+    if (!token || !name || !password) {
+      throw new Error("Token, name, and password are required.");
+    }
+
+    // Retrieve the user associated with the token
+    const tokenData = await getDbRow(`SELECT * FROM Tokens WHERE token = ?`, [token]);
+    if (!tokenData) {
+      throw new Error("Invalid or expired token.");
+    }
+
+    // Update the user's profile
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await runDbQuery(
+      `UPDATE Users SET name = ?, password = ? WHERE user_id = ?`,
+      [name, hashedPassword, tokenData.user_id]
+    );
+
+    // Remove the token after successful registration
+    await runDbQuery(`DELETE FROM Tokens WHERE token = ?`, [token]);
+
+    res.json({ message: "Signup completed successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
   }
 });
 

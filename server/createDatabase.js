@@ -115,7 +115,18 @@ db.serialize(() => {
     FOREIGN KEY(post_id) REFERENCES Community_Posts(post_id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES Users(user_id)
   )`, handleError('Post_Likes'));
+
+  // 11. Create Tokens Table
+  db.run(`CREATE TABLE Tokens (
+    token_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);`, handleError('Tokens'));
 });
+
+
 
 // Helper function for error handling
 function handleError(tableName) {

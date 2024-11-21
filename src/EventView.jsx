@@ -18,6 +18,9 @@ function EventView() {
 	const [replyContent, setReplyContent] = useState(""); // Content of the reply
 	const [showReplies, setShowReplies] = useState({}); // Track visible replies for posts
 	const [replies, setReplies] = useState({}); // Store replies for each post
+	const [inviteEmail, setInviteEmail] = useState('');
+	const [inviteStatus, setInviteStatus] = useState(null); // null, 'success', 'error'
+	const [inviteMessage, setInviteMessage] = useState('');
 
 	// Fetch current user info
 	useEffect(() => {
@@ -96,6 +99,32 @@ function EventView() {
 
 	// Handle tab switching
 	const handleTabClick = (tab) => setActiveTab(tab);
+
+	// Handle invite form submission
+	const handleInvite = async () => {
+		if (!inviteEmail) {
+			setInviteStatus('error');
+			setInviteMessage('Please provide an email address.');
+			return;
+		}
+		try {
+			const response = await fetch(`http://localhost:5001/api/events/${event_id}/invite`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include',
+				body: JSON.stringify({ email: inviteEmail }),
+			});
+			if (!response.ok) {
+				throw new Error('Failed to send invitation.');
+			}
+			setInviteStatus('success');
+			setInviteMessage('Invitation sent successfully!');
+			setInviteEmail(''); // Clear input field
+		} catch (err) {
+			setInviteStatus('error');
+			setInviteMessage(err.message);
+		}
+	};
 
 	// Handle toggling replies visibility
 	const handlePostReply = async (post_id, content) => {
@@ -307,6 +336,23 @@ function EventView() {
 				{activeTab === "attendees" && (
 					<div className="tab-content">
 						<h2>Attendees</h2>
+						{isOrganizer && (
+							<div className="invite-section">
+								<h3>Invite Someone</h3>
+								<input
+									type="email"
+									value={inviteEmail}
+									onChange={(e) => setInviteEmail(e.target.value)}
+									placeholder="Enter email to invite"
+								/>
+								<button onClick={handleInvite}>Send Invite</button>
+								{inviteStatus && (
+									<p className={inviteStatus === 'success' ? 'success-message' : 'error-message'}>
+										{inviteMessage}
+									</p>
+								)}
+							</div>
+						)}
 
 						{/* Show filter buttons only for the organizer */}
 						{isOrganizer && (
