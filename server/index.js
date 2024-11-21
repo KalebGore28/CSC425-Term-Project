@@ -1306,6 +1306,12 @@ app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => 
         event_venue_location: event.venue_location,
         invite_link: inviteLink,
       });
+
+      // Add the user to the Invitations table
+      await runDbQuery(
+        `INSERT INTO Invitations (event_id, user_id, status) VALUES (?, ?, "Sent")`,
+        [event_id, user.user_id]
+      );
     } else {
       // If the user exists, check for duplicate invitations
       const existingInvitation = await getDbRow(

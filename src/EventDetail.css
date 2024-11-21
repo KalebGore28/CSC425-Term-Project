@@ -41,12 +41,10 @@
 }
 
 .event-actions {
-	margin-top: 1rem;
 	justify-content: center;
 	align-items: center;
-	flex-direction: column;
 	display: flex;
-	gap: 0.5rem;
+	margin: auto;
 }
 
 .self-invite-button {
@@ -57,6 +55,7 @@
 	border-radius: 5px;
 	cursor: pointer;
 	font-size: 16px;
+	margin: 0 auto;
 }
 
 .self-invite-button:hover {

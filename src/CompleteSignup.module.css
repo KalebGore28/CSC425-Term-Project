@@ -1,4 +1,4 @@
-.complete-signup-container {
+.completeSignupContainer {
   max-width: 400px;
   margin: 50px auto;
   padding: 20px;
@@ -9,56 +9,56 @@
   text-align: center;
 }
 
-h1 {
+.heading {
   font-size: 24px;
   margin-bottom: 20px;
 }
 
-.error-message {
+.errorMessage {
   color: red;
   font-size: 14px;
   margin-bottom: 10px;
 }
 
-.success-message {
+.successMessage {
   color: green;
   font-size: 16px;
 }
 
-form {
+.formContainer {
   display: flex;
   flex-direction: column;
 }
 
-.form-group {
+.formGroup {
   margin-bottom: 15px;
   text-align: left;
 }
 
-label {
+.label {
   display: block;
   margin-bottom: 5px;
   font-weight: bold;
 }
 
-input {
-  width: 100%;
+.inputField {
+  width: 94%;
   padding: 10px;
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 5px;
 }
 
-button {
+.submitButton {
   padding: 10px 20px;
   font-size: 16px;
-  color: #7d7d7d;
+  color: #ffffff;
   background-color: #007bff;
   border: none;
   border-radius: 5px;
   cursor: pointer;
 }
 
-button:hover {
+.submitButtonHover:hover {
   background-color: #0056b3;
 }

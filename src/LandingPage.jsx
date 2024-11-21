@@ -1,6 +1,7 @@
 // src/LandingPage.jsx
 
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Footer from './components/Footer';
 import './LandingPage.css';
 
@@ -38,8 +39,7 @@ function LandingPage() {
 							VenueFlow is your comprehensive resource to find the ideal venue for any occasion.
 						</p>
 						<div className="search-bar">
-							<input type="text" placeholder="Search by Location" className="search-input" />
-							<button className="search-button">Search Venues</button>
+							<Link to="/venues" className="search-button">Explore Venues</Link>
 						</div>
 					</div>
 				</div>

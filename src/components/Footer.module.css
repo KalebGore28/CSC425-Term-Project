@@ -1,67 +1,62 @@
-/* Footer.css */
-.footer {
+/* Scoped Footer Container */
+footer {
 	background-color: #05396c;
 	color: white;
 	padding: 2rem 1rem;
 	text-align: center;
-  }
-  
-  .footer-container {
+}
+
+.footerContent {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
 	gap: 1rem;
 	max-width: 1200px;
 	margin: auto;
-  }
-  
-  .footer-section {
+}
+
+section {
 	flex: 1;
 	min-width: 200px;
-  }
-  
-  .footer-section h4 {
+}
+
+section h4 {
 	font-size: 1.25rem;
 	margin-bottom: 1rem;
-  }
-  
-  .footer-section p {
+}
+
+section p {
 	font-size: 1rem;
 	color: #ccc;
-  }
-  
-  .footer-links {
+}
+
+ul {
 	list-style: none;
 	padding: 0;
-  }
-  
-  .footer-links li {
+}
+
+li {
 	margin-bottom: 0.5rem;
-  }
-  
-  .footer-links a {
+}
+
+a {
 	color: white;
 	text-decoration: none;
 	font-size: 1rem;
-  }
-  
-  .footer-links a:hover {
+}
+
+a:hover {
 	text-decoration: underline;
-  }
-  
-  .footer-socials a {
-	margin-right: 1rem;
-	color: white;
-	text-decoration: none;
-	font-size: 1rem;
-  }
-  
-  .footer-socials a:hover {
-	text-decoration: underline;
-  }
-  
-  .footer-bottom {
+}
+
+.socialLinks {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.footerBottom {
 	margin-top: 1.5rem;
 	font-size: 0.9rem;
 	color: #ccc;
-  }
+}
