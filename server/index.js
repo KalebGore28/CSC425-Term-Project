@@ -508,6 +508,60 @@ app.patch('/api/posts/:post_id/unlike', authenticateToken, async (req, res) => {
   }
 });
 
+// Create a reply to a community post - ✅
+app.post('/api/posts/:post_id/reply', authenticateToken, async (req, res) => {
+  const { post_id } = req.params;
+  const user_id = req.user.user_id;
+  const { content } = req.body;
+
+  try {
+    if (!content) {
+      throw new Error("Reply content cannot be empty.");
+    }
+
+    // Ensure the parent post exists
+    const parentPost = await getDbRow(
+      `SELECT * FROM Community_Posts WHERE post_id = ?`,
+      [post_id]
+    );
+    if (!parentPost) {
+      throw new Error("Parent post not found.");
+    }
+
+    // Insert the reply into the database
+    const replyId = await runDbQuery(
+      `INSERT INTO Community_Posts (event_id, user_id, content, parent_post_id, created_at) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [parentPost.event_id, user_id, content, post_id, new Date()]
+    );
+
+    res.status(201).json({ message: "Reply posted successfully.", reply_id: replyId });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Get replies for a specific post - ✅
+app.get('/api/posts/:post_id/replies', authenticateToken, async (req, res) => {
+  const { post_id } = req.params;
+
+  try {
+    const replies = await queryDb(
+      `SELECT Community_Posts.post_id, Community_Posts.content, Community_Posts.created_at, 
+              Community_Posts.like_count, Users.name AS user_name 
+       FROM Community_Posts
+       JOIN Users ON Community_Posts.user_id = Users.user_id
+       WHERE Community_Posts.parent_post_id = ?
+       ORDER BY Community_Posts.created_at ASC`,
+      [post_id]
+    );
+
+    res.json({ data: replies });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // --- EVENTS ENDPOINTS --- ✅
 
 // Get all events with venue information, excluding invite-only events

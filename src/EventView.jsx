@@ -14,6 +14,10 @@ function EventView() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const [filterStatus, setFilterStatus] = useState("All"); // Default to show all attendees
+	const [replyingTo, setReplyingTo] = useState(null); // Current post being replied to
+	const [replyContent, setReplyContent] = useState(""); // Content of the reply
+	const [showReplies, setShowReplies] = useState({}); // Track visible replies for posts
+	const [replies, setReplies] = useState({}); // Store replies for each post
 
 	// Fetch current user info
 	useEffect(() => {
@@ -93,6 +97,46 @@ function EventView() {
 	// Handle tab switching
 	const handleTabClick = (tab) => setActiveTab(tab);
 
+	// Handle toggling replies visibility
+	const handlePostReply = async (post_id, content) => {
+		try {
+			const response = await fetch(`http://localhost:5001/api/posts/${post_id}/reply`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ content }),
+			});
+			if (!response.ok) {
+				throw new Error("Failed to post reply.");
+			}
+			setReplyingTo(null);
+			setReplyContent("");
+			// Optionally refresh replies
+			toggleViewReplies(post_id);
+		} catch (error) {
+			alert(error.message);
+		}
+	};
+
+	// Toggle visibility of replies for a post
+	const toggleViewReplies = async (post_id) => {
+		if (!showReplies[post_id]) {
+			try {
+				const response = await fetch(`http://localhost:5001/api/posts/${post_id}/replies`, {
+					credentials: "include",
+				});
+				if (!response.ok) {
+					throw new Error("Failed to fetch replies.");
+				}
+				const replyData = await response.json();
+				setReplies((prev) => ({ ...prev, [post_id]: replyData.data }));
+			} catch (error) {
+				alert(error.message);
+			}
+		}
+		setShowReplies((prev) => ({ ...prev, [post_id]: !prev[post_id] }));
+	};
+
 	// Handle deleting a community post
 	const handleDeletePost = async (post_id) => {
 		try {
@@ -103,15 +147,30 @@ function EventView() {
 					credentials: "include",
 				}
 			);
+
 			if (!response.ok) {
 				const errorData = await response.json();
 				throw new Error(errorData.error || "Failed to delete post.");
 			}
-			// Refresh posts list after successful deletion
+
+			// Refresh community posts for top-level posts
 			setCommunityPosts((prevPosts) =>
 				prevPosts.filter((post) => post.post_id !== post_id)
 			);
-			alert("Post deleted successfully.");
+
+			// Refresh replies if the deleted post is a reply
+			setReplies((prevReplies) => {
+				const updatedReplies = { ...prevReplies };
+
+				// Remove the reply from all parent posts' reply lists
+				for (const parentPostId in updatedReplies) {
+					updatedReplies[parentPostId] = updatedReplies[parentPostId].filter(
+						(reply) => reply.post_id !== post_id
+					);
+				}
+
+				return updatedReplies;
+			});
 		} catch (err) {
 			alert(err.message);
 		}
@@ -338,8 +397,18 @@ function EventView() {
 												>
 													{post.likedByCurrentUser ? "Unlike" : "Like"} ({post.like_count})
 												</button>
-												<button className="reply-button">Reply</button>
-												<button className="share-button">Share</button>
+												<button
+													className="reply-button"
+													onClick={() => setReplyingTo(post.post_id)} // Opens the reply form
+												>
+													Reply
+												</button>
+												<button
+													className="view-replies-button"
+													onClick={() => toggleViewReplies(post.post_id)} // Toggles replies visibility
+												>
+													{showReplies[post.post_id] ? "Hide Replies" : "View Replies"}
+												</button>
 												{(isOrganizer || post.user_id === currentUserId) && (
 													<button
 														className="delete-post-button"
@@ -349,6 +418,48 @@ function EventView() {
 													</button>
 												)}
 											</div>
+											{/* Reply Form */}
+											{replyingTo === post.post_id && (
+												<form
+													className="reply-form"
+													onSubmit={(e) => {
+														e.preventDefault();
+														handlePostReply(post.post_id, replyContent);
+													}}
+												>
+													<textarea
+														value={replyContent}
+														onChange={(e) => setReplyContent(e.target.value)}
+														placeholder="Write your reply here..."
+													/>
+													<button type="submit">Post Reply</button>
+												</form>
+											)}
+											{/* Replies Section */}
+											{showReplies[post.post_id] && (
+												<ul className="replies-list">
+													{replies[post.post_id]?.map((reply) => (
+														<li key={reply.post_id} className="reply-item">
+															<div className="reply-header">
+																<strong>{reply.user_name}</strong>
+																<span>{new Date(reply.created_at).toLocaleString()}</span>
+															</div>
+															<div className="reply-actions">
+																<p>{reply.content}</p>
+																{/* Delete button logic for organizer and reply author */}
+																{(isOrganizer || reply.user_id === currentUserId) && (
+																	<button
+																		className="delete-reply-button"
+																		onClick={() => handleDeletePost(reply.post_id)}
+																	>
+																		Delete
+																	</button>
+																)}
+															</div>
+														</li>
+													))}
+												</ul>
+											)}
 										</div>
 									</li>
 								))}
