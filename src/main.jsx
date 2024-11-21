@@ -24,7 +24,7 @@ import MyEvents from './MyEvents';
 import EditEvent from './EditEvent';
 import EventView from './EventView';
 
-
+import CompleteSignup from './CompleteSignup';
 
 import './index.css';
 
@@ -52,6 +52,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <Route path="/my-events" element={<MyEvents />} />
             <Route path="/events/:event_id/edit" element={<EditEvent />} />
             <Route path="/events/:event_id/view" element={<EventView />} />
+
+            <Route path="/complete-signup" element={<CompleteSignup />} />
 
             {/* Fallback route for unmatched paths */}
             <Route path="*" element={<strong><br /><br /><br /><br />404 - Page Not Found</strong>} />

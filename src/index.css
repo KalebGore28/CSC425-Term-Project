@@ -28,6 +28,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  padding-top: 80px; /* Add padding equal to the height of the navbar */
 }
 
 h1 {
