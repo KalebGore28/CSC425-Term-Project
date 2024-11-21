@@ -79,10 +79,12 @@ db.serialize(() => {
     user_id INTEGER NOT NULL,
     content TEXT NOT NULL,
     like_count INTEGER DEFAULT 0,
+    parent_post_id INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
-  )`, handleError('Community_Posts'));
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (parent_post_id) REFERENCES Community_Posts(post_id) ON DELETE CASCADE
+)`, handleError('Community_Posts'));
 
   // 8. Create Notifications Table
   db.run(`CREATE TABLE IF NOT EXISTS Notifications (
@@ -110,7 +112,7 @@ db.serialize(() => {
     post_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     UNIQUE(post_id, user_id),
-    FOREIGN KEY(post_id) REFERENCES Community_Posts(post_id),
+    FOREIGN KEY(post_id) REFERENCES Community_Posts(post_id) ON DELETE CASCADE,
     FOREIGN KEY(user_id) REFERENCES Users(user_id)
   )`, handleError('Post_Likes'));
 });

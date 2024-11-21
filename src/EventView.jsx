@@ -139,6 +139,7 @@ function EventView() {
 
 	// Handle deleting a community post
 	const handleDeletePost = async (post_id) => {
+		console.log("Attempting to delete post with ID:", post_id);
 		try {
 			const response = await fetch(
 				`http://localhost:5001/api/events/${event_id}/posts/${post_id}`,
