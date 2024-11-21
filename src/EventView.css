@@ -6,6 +6,13 @@
 	overflow: hidden;
 }
 
+@media (max-width: 768px) {
+	.event-view-container {
+		flex-direction: column;
+		/* Stack menu and content vertically */
+	}
+}
+
 .content-area {
 	flex: 1;
 	padding: 20px;
@@ -43,23 +50,31 @@
 	border-right: 1px solid #ddd;
 	display: flex;
 	flex-direction: column;
-	/* Stack child elements vertically */
-	justify-content: space-between;
-	/* Push the back button to the bottom */
-	height: 100%;
-	/* Full height of the container */
-	box-sizing: border-box;
-	overflow-y: auto;
-	/* Allow scrolling if content exceeds height */
+	gap: 15px;
+	transition: transform 0.3s ease;
+}
+
+@media (max-width: 768px) {
+	.left-menu {
+		width: 100%;
+		border-right: none;
+		border-bottom: 1px solid #ddd;
+		transform: translateY(-100%);
+		position: fixed;
+		top: 0;
+		z-index: 10;
+	}
+
+	.left-menu.open {
+		transform: translateY(0);
+	}
 }
 
 /* Grouped Buttons */
 .menu-group {
 	display: flex;
 	flex-direction: column;
-	/* Stack the buttons vertically */
 	gap: 15px;
-	/* Add spacing between the buttons */
 }
 
 /* Menu Item Buttons */
@@ -95,13 +110,13 @@
 	font-size: 16px;
 	transition: background-color 0.3s ease;
 	margin-top: auto;
-	/* Ensures the back button remains at the bottom */
 }
 
 .back-button:hover {
 	background-color: #e04c4c;
 }
 
+/* Attendee Item */
 .attendee-item {
 	display: flex;
 	justify-content: space-between;
@@ -128,41 +143,133 @@
 	background-color: #e04c4c;
 }
 
-/* Community Post Styling */
-.post-item {
+/* Timeline */
+.timeline {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.timeline-item {
+	display: flex;
+	flex-direction: column;
+	margin-bottom: 20px;
+	border: 1px solid #ddd;
+	border-radius: 8px;
+	background-color: #fff;
+	padding: 15px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	max-width: 600px;
+}
+
+.post-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	padding: 10px;
 	margin-bottom: 10px;
-	border: 1px solid #ddd;
-	border-radius: 5px;
-	background-color: #fff;
+}
+
+.post-header strong {
+	font-size: 16px;
+	color: #333;
+}
+
+.post-header .post-date {
+	font-size: 12px;
+	color: #777;
+}
+
+.timeline-content p {
+	margin: 10px 0;
+	color: #555;
+}
+
+.post-actions {
+	display: flex;
+	justify-content: flex-start;
+	gap: 10px;
 }
 
 .post-actions button {
-	background-color: #ff5c5c;
-	color: white;
-	border: none;
+	background-color: #f0f0f0;
+	border: 1px solid #ccc;
 	padding: 5px 10px;
 	cursor: pointer;
 	border-radius: 5px;
 	font-size: 14px;
-	transition: background-color 0.3s ease;
+	transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .post-actions button:hover {
+	background-color: #e0e0e0;
+}
+
+.post-actions .like-button {
+	color: #007bff;
+	border-color: #007bff;
+}
+
+.post-actions .reply-button {
+	color: #28a745;
+	border-color: #28a745;
+}
+
+.post-actions .share-button {
+	color: #17a2b8;
+	border-color: #17a2b8;
+}
+
+.post-actions .delete-post-button {
+	color: #ff5c5c;
+	border-color: #ff5c5c;
+}
+
+.post-actions .delete-post-button:hover {
 	background-color: #e04c4c;
+	color: white;
 }
 
-.filter-buttons {
-	display: flex;
-	gap: 10px;
-	margin-bottom: 20px;
+/* Top Navigation Buttons */
+.top-nav {
+	display: none;
+	justify-content: space-around;
+	align-items: center;
+	background-color: #f4f4f4;
+	padding: 10px;
+	border-bottom: 1px solid #ddd;
 }
 
-.filter-button {
+@media (max-width: 768px) {
+	.top-nav {
+		display: flex;
+	}
+}
+
+.top-nav-button {
+	background-color: #fff;
+	border: 1px solid #ccc;
+	padding: 10px 15px;
+	cursor: pointer;
+	border-radius: 5px;
+	text-align: center;
+	font-size: 16px;
+	transition: background-color 0.3s ease, color 0.3s ease;
+	width: 30%;
+}
+
+.top-nav-button.active {
+	background-color: #007bff;
+	color: white;
+	border-color: #007bff;
+}
+
+.top-nav-button:hover {
+	background-color: #e0e0e0;
+}
+
+.like-button {
 	background-color: #f0f0f0;
+	color: #007bff;
 	border: 1px solid #ccc;
 	padding: 5px 10px;
 	cursor: pointer;
@@ -170,12 +277,11 @@
 	transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.filter-button.active {
+.like-button.liked {
 	background-color: #007bff;
 	color: white;
-	border-color: #007bff;
 }
 
-.filter-button:hover {
+.like-button:hover {
 	background-color: #e0e0e0;
 }

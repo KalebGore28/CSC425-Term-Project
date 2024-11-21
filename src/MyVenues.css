@@ -12,8 +12,12 @@
 /* Grid layout for venue cards */
 .venues-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-start;
 	gap: 20px;
+	padding: 20px;
 }
 
 /* Venue card styling */
@@ -23,6 +27,7 @@
 	overflow: hidden;
 	transition: box-shadow 0.4s ease, transform 0.4s ease;
 	will-change: transform, box-shadow;
+	max-width: 400px;
 }
 
 .venue-card:hover {
@@ -50,6 +55,17 @@
 .venue-info p {
 	margin: 5px 0;
 	font-size: 14px;
+	color: #555;
+}
+
+.venue-description {
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	margin: 0.5rem 0;
 	color: #555;
 }
 

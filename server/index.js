@@ -279,27 +279,41 @@ const generateToken = (user) => {
 
 // --- COMMUNITY POSTS ENDPOINTS --- ✅
 
-// Get all posts for an event community, accessible to users with an accepted invitation or the event organizer
+// Get all posts for an event community
 app.get('/api/events/:event_id/posts', authenticateToken, async (req, res) => {
   const { event_id } = req.params;
   const user_id = req.user.user_id;
 
   try {
-    // Check user access to event posts
+    // Verify user access to event posts
     await verifyEventAccess(event_id, user_id);
 
-    // Fetch community posts for the event
+    // Fetch community posts with liked_by data
     const posts = await queryDb(
-      `SELECT Community_Posts.post_id, Community_Posts.event_id, Community_Posts.user_id, Community_Posts.content, Community_Posts.created_at,
-              Users.name AS user_name, Events.name AS event_name
-       FROM Community_Posts
-       JOIN Users ON Community_Posts.user_id = Users.user_id
-       JOIN Events ON Community_Posts.event_id = Events.event_id
-       WHERE Community_Posts.event_id = ?`,
+      `SELECT 
+         CP.post_id, 
+         CP.event_id, 
+         CP.user_id, 
+         CP.content, 
+         CP.created_at, 
+         CP.like_count, 
+         U.name AS user_name, 
+         GROUP_CONCAT(PL.user_id) AS liked_by
+       FROM Community_Posts CP
+       LEFT JOIN Users U ON CP.user_id = U.user_id
+       LEFT JOIN Post_Likes PL ON CP.post_id = PL.post_id
+       WHERE CP.event_id = ?
+       GROUP BY CP.post_id`,
       [event_id]
     );
 
-    res.json({ data: posts });
+    // Transform liked_by into an array of user IDs
+    const transformedPosts = posts.map((post) => ({
+      ...post,
+      liked_by: post.liked_by ? post.liked_by.split(',').map(Number) : [], // Convert to array of numbers
+    }));
+
+    res.json({ data: transformedPosts });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -384,6 +398,111 @@ app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
     await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [id]);
 
     res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Delete a specific community post - ✅
+app.delete('/api/events/:event_id/posts/:post_id', authenticateToken, async (req, res) => {
+  const { event_id, post_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Verify the post exists and check permissions
+    const post = await getDbRow(
+      `SELECT CP.post_id, CP.user_id AS author_id, E.organizer_id
+       FROM Community_Posts CP
+       JOIN Events E ON CP.event_id = E.event_id
+       WHERE CP.post_id = ? AND CP.event_id = ?`,
+      [post_id, event_id]
+    );
+
+    if (!post) {
+      throw new Error("Post not found.");
+    }
+
+    // Check if the user is either the author of the post or the organizer of the event
+    if (post.author_id !== user_id && post.organizer_id !== user_id) {
+      throw new Error("You do not have permission to delete this post.");
+    }
+
+    // Delete the post
+    const changes = await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [post_id]);
+
+    if (changes === 0) {
+      throw new Error("Failed to delete the post.");
+    }
+
+    res.status(200).json({ message: "Post deleted successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Like a post - ✅
+app.patch('/api/posts/:post_id/like', authenticateToken, async (req, res) => {
+  const { post_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Check if the user has already liked the post
+    const existingLike = await getDbRow(
+      `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+      [post_id, user_id]
+    );
+
+    if (existingLike) {
+      throw new Error("User has already liked this post.");
+    }
+
+    // Insert a new like
+    await runDbQuery(
+      `INSERT INTO Post_Likes (post_id, user_id) VALUES (?, ?)`,
+      [post_id, user_id]
+    );
+
+    // Increment the like count in the post
+    await runDbQuery(
+      `UPDATE Community_Posts SET like_count = like_count + 1 WHERE post_id = ?`,
+      [post_id]
+    );
+
+    res.json({ message: "Post liked successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Unlike a post - ✅
+app.patch('/api/posts/:post_id/unlike', authenticateToken, async (req, res) => {
+  const { post_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Check if the user has liked the post
+    const existingLike = await getDbRow(
+      `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+      [post_id, user_id]
+    );
+
+    if (!existingLike) {
+      throw new Error("User has not liked this post.");
+    }
+
+    // Remove the like
+    await runDbQuery(
+      `DELETE FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+      [post_id, user_id]
+    );
+
+    // Decrement the like count in the post
+    await runDbQuery(
+      `UPDATE Community_Posts SET like_count = like_count - 1 WHERE post_id = ?`,
+      [post_id]
+    );
+
+    res.json({ message: "Post unliked successfully." });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -957,6 +1076,78 @@ app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
     res.json({ message: "Invitation deleted successfully." });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Get all invitations for the authenticated user
+app.get('/api/users/me/invites', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    const invites = await queryDb(`
+      SELECT 
+        E.event_id, 
+        E.name AS event_name, 
+        E.start_date, 
+        E.end_date, 
+        V.name AS venue_name, 
+        V.location AS venue_location 
+      FROM Invitations I
+      JOIN Events E ON I.event_id = E.event_id
+      JOIN Venues V ON E.venue_id = V.venue_id
+      WHERE I.user_id = ? AND I.status = 'Sent'`,
+      [userId]
+    );
+
+    res.json({ data: invites });
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching invitations." });
+  }
+});
+
+// Accept an invitation
+app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res) => {
+  const { event_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Update the invitation status to Accepted
+    await runDbQuery(
+      `UPDATE Invitations 
+       SET status = 'Accepted' 
+       WHERE event_id = ? AND user_id = ? AND status = 'Sent'`,
+      [event_id, user_id]
+    );
+
+    res.status(200).json({ message: "Invitation accepted successfully." });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Fetch accepted invites for the authenticated user
+app.get('/api/users/me/accepted-invites', authenticateToken, async (req, res) => {
+  const user_id = req.user.user_id;
+
+  try {
+    const events = await queryDb(
+      `SELECT 
+         E.event_id, 
+         E.name AS event_name, 
+         E.start_date, 
+         E.end_date, 
+         V.name AS venue_name, 
+         V.location AS venue_location 
+       FROM Invitations I
+       JOIN Events E ON I.event_id = E.event_id
+       JOIN Venues V ON E.venue_id = V.venue_id
+       WHERE I.user_id = ? AND I.status = 'Accepted'`,
+      [user_id]
+    );
+
+    res.json({ data: events });
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching accepted invites." });
   }
 });
 

@@ -78,6 +78,7 @@ db.serialize(() => {
     event_id INTEGER NOT NULL,
     user_id INTEGER NOT NULL,
     content TEXT NOT NULL,
+    like_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (event_id) REFERENCES Events(event_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
@@ -102,6 +103,16 @@ db.serialize(() => {
     available_date TEXT NOT NULL,
     FOREIGN KEY (venue_id) REFERENCES Venues(venue_id) ON DELETE CASCADE
   )`, handleError('Available_Dates'));
+
+  // 10. Create Post_Likes Table
+  db.run(`CREATE TABLE IF NOT EXISTS Post_Likes (
+    like_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    UNIQUE(post_id, user_id),
+    FOREIGN KEY(post_id) REFERENCES Community_Posts(post_id),
+    FOREIGN KEY(user_id) REFERENCES Users(user_id)
+  )`, handleError('Post_Likes'));
 });
 
 // Helper function for error handling

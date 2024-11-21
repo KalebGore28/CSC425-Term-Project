@@ -77,7 +77,7 @@ function MyVenues() {
 							<div className="venue-info">
 								<h2>{venue.name}</h2>
 								<p><strong>Location:</strong> {venue.location}</p>
-								<p>{venue.description}</p>
+								<p className="venue-description">{venue.description}</p>
 								<p><strong>Capacity:</strong> {venue.capacity}</p>
 								<p><strong>Price:</strong> ${venue.price}/day</p>
 							</div>
@@ -89,7 +89,7 @@ function MyVenues() {
 					))}
 				</div>
 			) : (
-				<p>You have no venues. <Link to="/venues/new">List a new venue</Link></p>
+				<p>You have no venues. <Link to="/list-venue">List a new venue</Link></p>
 			)}
 		</div>
 	);

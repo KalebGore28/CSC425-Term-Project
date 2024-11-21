@@ -72,7 +72,12 @@ function EventView() {
 					throw new Error("Failed to fetch community posts.");
 				}
 				const postsData = await postsResponse.json();
-				setCommunityPosts(postsData.data);
+				setCommunityPosts(postsData.data.map((post) => ({
+					...post,
+					likedByCurrentUser: Array.isArray(post.liked_by) && currentUserId
+						? post.liked_by.includes(currentUserId)
+						: false,
+				})));
 			} catch (err) {
 				setError(err.message);
 			} finally {
@@ -139,6 +144,40 @@ function EventView() {
 	// Handle navigation back to the Events page
 	const handleBackClick = () => navigate("/my-events");
 
+	// Handle toggling like/unlike
+	const handleToggleLikePost = async (post_id, liked) => {
+		try {
+			const url = liked
+				? `http://localhost:5001/api/posts/${post_id}/unlike`
+				: `http://localhost:5001/api/posts/${post_id}/like`;
+
+			const response = await fetch(url, {
+				method: "PATCH",
+				credentials: "include",
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to toggle like.");
+			}
+
+			// Update UI state
+			setCommunityPosts((prevPosts) =>
+				prevPosts.map((post) =>
+					post.post_id === post_id
+						? {
+							...post,
+							likedByCurrentUser: !liked,
+							like_count: liked ? post.like_count - 1 : post.like_count + 1,
+						}
+						: post
+				)
+			);
+		} catch (err) {
+			alert(err.message);
+		}
+	};
+
 	if (isLoading) return <p>Loading event details...</p>;
 	if (error) return <p className="error-message">Error: {error}</p>;
 
@@ -171,6 +210,28 @@ function EventView() {
 				</button>
 			</div>
 
+			{/* Top Navigation Buttons */}
+			<div className="top-nav">
+				<button
+					className={`top-nav-button ${activeTab === "details" ? "active" : ""}`}
+					onClick={() => handleTabClick("details")}
+				>
+					Event Details
+				</button>
+				<button
+					className={`top-nav-button ${activeTab === "attendees" ? "active" : ""}`}
+					onClick={() => handleTabClick("attendees")}
+				>
+					Attendees
+				</button>
+				<button
+					className={`top-nav-button ${activeTab === "posts" ? "active" : ""}`}
+					onClick={() => handleTabClick("posts")}
+				>
+					Community Posts
+				</button>
+			</div>
+
 			{/* Main Content */}
 			<div className="content-area">
 				{activeTab === "details" && eventDetails && (
@@ -182,55 +243,77 @@ function EventView() {
 						<p><strong>Invite Only:</strong> {eventDetails.invite_only ? "Yes" : "No"}</p>
 					</div>
 				)}
+
 				{activeTab === "attendees" && (
 					<div className="tab-content">
 						<h2>Attendees</h2>
 
-						{/* Filter Buttons */}
-						<div className="filter-buttons">
-							<button
-								className={`filter-button ${filterStatus === "All" ? "active" : ""}`}
-								onClick={() => setFilterStatus("All")}
-							>
-								All
-							</button>
-							<button
-								className={`filter-button ${filterStatus === "Accepted" ? "active" : ""}`}
-								onClick={() => setFilterStatus("Accepted")}
-							>
-								Accepted
-							</button>
-							<button
-								className={`filter-button ${filterStatus === "Sent" ? "active" : ""}`}
-								onClick={() => setFilterStatus("Sent")}
-							>
-								Sent
-							</button>
-							<button
-								className={`filter-button ${filterStatus === "Declined" ? "active" : ""}`}
-								onClick={() => setFilterStatus("Declined")}
-							>
-								Declined
-							</button>
-						</div>
+						{/* Show filter buttons only for the organizer */}
+						{isOrganizer && (
+							<div className="filter-buttons">
+								<button
+									className={`filter-button ${filterStatus === "All" ? "active" : ""}`}
+									onClick={() => setFilterStatus("All")}
+								>
+									All
+								</button>
+								<button
+									className={`filter-button ${filterStatus === "Accepted" ? "active" : ""}`}
+									onClick={() => setFilterStatus("Accepted")}
+								>
+									Accepted
+								</button>
+								<button
+									className={`filter-button ${filterStatus === "Sent" ? "active" : ""}`}
+									onClick={() => setFilterStatus("Sent")}
+								>
+									Sent
+								</button>
+								<button
+									className={`filter-button ${filterStatus === "Declined" ? "active" : ""}`}
+									onClick={() => setFilterStatus("Declined")}
+								>
+									Declined
+								</button>
+							</div>
+						)}
 
-						{/* Filtered Attendees List */}
-						{attendees.length > 0 ? (
+						{/* Attendees List */}
+						{attendees.filter((attendee) =>
+							isOrganizer
+								? filterStatus === "All" || attendee.status === filterStatus
+								: attendee.status === "Accepted"
+						).length > 0 ? (
 							<ul>
 								{attendees
 									.filter((attendee) =>
-										filterStatus === "All" ? true : attendee.status === filterStatus
+										isOrganizer
+											? filterStatus === "All" || attendee.status === filterStatus
+											: attendee.status === "Accepted"
 									)
 									.map((attendee) => (
 										<li key={attendee.user_id} className="attendee-item">
 											<span>
 												{attendee.name} - {attendee.status}
 											</span>
+											{/* Organizer can remove attendees */}
+											{isOrganizer && (
+												<button
+													className="remove-attendee-button"
+													onClick={() => handleRemoveAttendee(attendee.user_id)}
+												>
+													Remove
+												</button>
+											)}
 										</li>
 									))}
 							</ul>
 						) : (
-							<p>No attendees yet for this event.</p>
+							<p>
+								{isOrganizer
+									? "No attendees found for the selected filter."
+									: "No attendees have accepted the invitation yet."}
+							</p>
 						)}
 					</div>
 				)}
@@ -239,22 +322,33 @@ function EventView() {
 					<div className="tab-content">
 						<h2>Community Posts</h2>
 						{communityPosts.length > 0 ? (
-							<ul>
+							<ul className="timeline">
 								{communityPosts.map((post) => (
-									<li key={post.post_id} className="post-item">
-										<div>
-											<strong>{post.user_name}</strong>: {post.content}
-										</div>
-										<div className="post-actions">
-											{/* Allow organizer to delete any post, and user to delete their own */}
-											{isOrganizer || post.author_id === currentUserId ? (
+									<li key={post.post_id} className="timeline-item">
+										<div className="timeline-content">
+											<div className="post-header">
+												<strong>{post.user_name}</strong>
+												<span className="post-date">{new Date(post.created_at).toLocaleString()}</span>
+											</div>
+											<p>{post.content}</p>
+											<div className="post-actions">
 												<button
-													className="delete-post-button"
-													onClick={() => handleDeletePost(post.post_id)}
+													className={`like-button ${post.likedByCurrentUser ? "liked" : ""}`}
+													onClick={() => handleToggleLikePost(post.post_id, post.likedByCurrentUser)}
 												>
-													Delete
+													{post.likedByCurrentUser ? "Unlike" : "Like"} ({post.like_count})
 												</button>
-											) : null}
+												<button className="reply-button">Reply</button>
+												<button className="share-button">Share</button>
+												{(isOrganizer || post.user_id === currentUserId) && (
+													<button
+														className="delete-post-button"
+														onClick={() => handleDeletePost(post.post_id)}
+													>
+														Delete
+													</button>
+												)}
+											</div>
 										</div>
 									</li>
 								))}

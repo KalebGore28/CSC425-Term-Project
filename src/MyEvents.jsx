@@ -4,6 +4,9 @@ import "./MyEvents.css";
 
 function MyEvents() {
 	const [events, setEvents] = useState([]);
+	const [invitedEvents, setInvitedEvents] = useState([]);
+	const [acceptedInvites, setAcceptedInvites] = useState([]); // Accepted events from invitations
+	const [filter, setFilter] = useState("My Events"); // Default filter
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState(null);
 	const navigate = useNavigate();
@@ -12,14 +15,35 @@ function MyEvents() {
 	useEffect(() => {
 		const fetchEvents = async () => {
 			try {
-				const response = await fetch("http://localhost:5001/api/users/me/events", {
+				// Fetch personal events
+				const eventsResponse = await fetch("http://localhost:5001/api/users/me/events", {
 					credentials: "include",
 				});
-				if (!response.ok) {
+				if (!eventsResponse.ok) {
 					throw new Error("Failed to fetch events.");
 				}
-				const { data } = await response.json();
-				setEvents(data);
+				const { data: personalEvents } = await eventsResponse.json();
+				setEvents(personalEvents);
+
+				// Fetch invited events
+				const invitesResponse = await fetch("http://localhost:5001/api/users/me/invites", {
+					credentials: "include",
+				});
+				if (!invitesResponse.ok) {
+					throw new Error("Failed to fetch invited events.");
+				}
+				const { data: inviteEvents } = await invitesResponse.json();
+				setInvitedEvents(inviteEvents);
+
+				// Fetch accepted invites
+				const acceptedResponse = await fetch("http://localhost:5001/api/users/me/accepted-invites", {
+					credentials: "include",
+				});
+				if (!acceptedResponse.ok) {
+					throw new Error("Failed to fetch accepted invites.");
+				}
+				const { data: acceptedEvents } = await acceptedResponse.json();
+				setAcceptedInvites(acceptedEvents);
 			} catch (err) {
 				setError(err.message);
 			} finally {
@@ -49,21 +73,78 @@ function MyEvents() {
 		}
 	};
 
+	// Handle accepting an invitation
+	const handleAcceptInvite = async (eventId) => {
+		try {
+			const response = await fetch(`http://localhost:5001/api/invitations/${eventId}/accept`, {
+				method: "POST",
+				credentials: "include",
+			});
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to accept the invitation.");
+			}
+			alert("Invitation accepted successfully.");
+			// Remove the event from the invited list and add it to accepted invites
+			setInvitedEvents((prev) => prev.filter((event) => event.event_id !== eventId));
+			const acceptedEvent = invitedEvents.find((event) => event.event_id === eventId);
+			setAcceptedInvites((prev) => [...prev, acceptedEvent]);
+		} catch (err) {
+			alert(err.message);
+		}
+	};
+
 	if (isLoading) return <p>Loading your events...</p>;
 	if (error) return <p>Error: {error}</p>;
+
+	// Determine which events to show based on the current filter
+	const displayedEvents =
+		filter === "My Events"
+			? events
+			: filter === "Invited Events"
+				? invitedEvents
+				: acceptedInvites; // Add acceptedInvites for "Accepted Events"
 
 	return (
 		<div className="my-events-page">
 			<h1>My Events</h1>
-			<button
-				className="create-event-button"
-				onClick={() => navigate("/events/new")}
-			>
-				Create a New Event
-			</button>
-			{events.length > 0 ? (
+
+			{/* Filter Buttons */}
+			<div className="filter-buttons">
+				<button
+					className={`filter-button ${filter === "My Events" ? "active" : ""}`}
+					onClick={() => setFilter("My Events")}
+				>
+					My Events
+				</button>
+				<button
+					className={`filter-button ${filter === "Invited Events" ? "active" : ""}`}
+					onClick={() => setFilter("Invited Events")}
+				>
+					Invited Events
+				</button>
+				<button
+					className={`filter-button ${filter === "Accepted Events" ? "active" : ""}`}
+					onClick={() => setFilter("Accepted Events")}
+				>
+					Accepted Events
+				</button>
+			</div>
+
+			{/* Create Event Button */}
+			{filter === "My Events" && (
+				<button
+					className="create-event-button"
+					onClick={() => navigate("/events/new")}
+				>
+					Create a New Event
+				</button>
+			)}
+
+			{/* Events Grid */}
+			{displayedEvents.length > 0 ? (
 				<div className="events-grid">
-					{events.map((event) => (
+					{displayedEvents.map((event) => (
 						<div className="event-card" key={event.event_id}>
 							<div className="event-info">
 								<h2>{event.event_name}</h2>
@@ -72,30 +153,51 @@ function MyEvents() {
 								<p><strong>Dates:</strong> {event.start_date} - {event.end_date}</p>
 							</div>
 							<div className="event-actions">
-								<button
-									onClick={() => navigate(`/events/${event.event_id}/edit`)}
-									className="edit-button"
-								>
-									Edit
-								</button>
-								<button
-									onClick={() => navigate(`/events/${event.event_id}/view`)}
-									className="view-button"
-								>
-									View
-								</button>
-								<button
-									onClick={() => handleDelete(event.event_id)}
-									className="delete-button"
-								>
-									Delete
-								</button>
+								{/* Conditional Buttons Based on Filter */}
+								{filter === "My Events" && (
+									<>
+										<button
+											onClick={() => navigate(`/events/${event.event_id}/view`)}
+											className="view-button"
+										>
+											View
+										</button>
+										<button
+											onClick={() => navigate(`/events/${event.event_id}/edit`)}
+											className="edit-button"
+										>
+											Edit
+										</button>
+										<button
+											onClick={() => handleDelete(event.event_id)}
+											className="delete-button"
+										>
+											Delete
+										</button>
+									</>
+								)}
+								{filter === "Invited Events" && (
+									<button
+										onClick={() => handleAcceptInvite(event.event_id)}
+										className="accept-button"
+									>
+										Accept
+									</button>
+								)}
+								{filter === "Accepted Events" && (
+									<button
+										onClick={() => navigate(`/events/${event.event_id}/view`)}
+										className="view-button"
+									>
+										View
+									</button>
+								)}
 							</div>
 						</div>
 					))}
 				</div>
 			) : (
-				<p>You have no events yet.</p>
+				<p>You have no {filter.toLowerCase()} yet.</p>
 			)}
 		</div>
 	);

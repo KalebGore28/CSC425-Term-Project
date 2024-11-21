@@ -9,9 +9,12 @@
 }
 
 .events-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	align-items: flex-start;
 	gap: 20px;
+	padding: 20px;
 }
 
 .event-card {
@@ -20,7 +23,7 @@
 	overflow: hidden;
 	transition: box-shadow 0.3s ease, transform 0.3s ease;
 	background-color: #fff;
-	max-width: 300px;
+	max-width: 400px;
 }
 
 .event-card:hover {
@@ -139,4 +142,44 @@
 
 .create-event-button:hover {
 	background-color: #1976d2;
+}
+
+.filter-buttons {
+	display: flex;
+	justify-content: center;
+	margin-bottom: 20px;
+	gap: 10px;
+}
+
+.filter-button {
+	background-color: #f0f0f0;
+	border: 1px solid #ccc;
+	padding: 10px 15px;
+	cursor: pointer;
+	border-radius: 5px;
+	transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.filter-button.active {
+	background-color: #007bff;
+	color: white;
+	border-color: #007bff;
+}
+
+.filter-button:hover {
+	background-color: #e0e0e0;
+}
+
+.accept-button {
+	background-color: #4caf50;
+	color: white;
+	border: none;
+	padding: 8px 15px;
+	border-radius: 5px;
+	cursor: pointer;
+	font-size: 14px;
+}
+
+.accept-button:hover {
+	background-color: #45a049;
 }
