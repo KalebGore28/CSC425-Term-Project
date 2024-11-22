@@ -1,0 +1,114 @@
+/* LandingPage.css */
+
+.landing-page {
+	font-family: Arial, sans-serif;
+	width: 100%;
+	min-height: 100vh; /* Ensures it covers the entire viewport height */
+	margin: 0;
+}
+
+.hero-section {
+	background-size: cover;
+	background-position: center;
+	height: 60vh;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	text-align: center;
+	top: 5rem;
+	transition: background-image 1s ease-in-out; /* Smooth transition */
+}
+
+.hero-content {
+	background-color: rgba(0, 0, 0, 0.5);
+	/* Dark overlay */
+	padding: 2rem;
+	border-radius: 10px;
+	width: 90%;
+	max-width: 800px;
+}
+
+.hero-title {
+	font-size: 2.5rem;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+}
+
+.hero-subtitle {
+	font-size: 1.25rem;
+	margin-bottom: 1.5rem;
+}
+
+.search-bar {
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
+	margin-top: 1.5rem;
+}
+
+.search-input {
+	width: 100%;
+	max-width: 300px;
+	padding: 0.75rem;
+	border: none;
+	border-radius: 5px;
+	font-size: 1rem;
+}
+
+.search-button {
+	background-color: #2dc6cb;
+	color: white;
+	padding: 0.75rem 1.5rem;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+	font-size: 1rem;
+}
+
+.search-button:hover {
+	background-color: #2d87cb;
+}
+
+/* "How it works" section styling */
+.how-it-works {
+	padding: 3rem 1rem;
+	text-align: center;
+	background-color: #f9f9f9;
+  }
+  
+  .how-it-works h2 {
+	font-size: 2rem;
+	margin-bottom: 1rem;
+  }
+  
+  .how-it-works p {
+	font-size: 1.1rem;
+	max-width: 600px;
+	margin: 0 auto 2rem auto;
+	color: #555;
+  }
+  
+  /* Steps styling */
+  .steps {
+	display: flex;
+	justify-content: space-around;
+	flex-wrap: wrap;
+  }
+  
+  .step {
+	width: 250px;
+	text-align: center;
+	margin: 1rem;
+  }
+  
+  .step h3 {
+	font-size: 1.5rem;
+	color: #1e90ff;
+  }
+  
+  .step p {
+	font-size: 1rem;
+	color: #666;
+  }

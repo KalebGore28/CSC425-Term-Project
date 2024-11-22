@@ -1,0 +1,253 @@
+/* src/components/Navbar.css */
+
+/* Navbar Styles */
+.navbar {
+	background-color: #05396c;
+	color: white;
+	padding: 1rem;
+	position: fixed;
+	top: 0;
+	width: 100%;
+	z-index: 1000;
+	display: flex;
+	justify-content: center;
+}
+
+/* Navbar Container */
+.navbar-container {
+	max-width: 1200px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	width: 100%;
+}
+
+/* Link Container */
+.link-container {
+	max-width: 600px;
+	margin: auto;
+	display: flex;
+	justify-content: space-evenly;
+}
+
+/* Logo Style */
+.logo {
+	color: white;
+	font-size: 2rem;
+	font-weight: bold;
+	text-decoration: none;
+	margin-right: 2rem;
+	white-space: nowrap;
+}
+
+/* Navbar Link Style */
+.nav-link {
+	color: white;
+	text-decoration: none;
+	padding: 0.5rem 1rem;
+	margin-right: 1.5rem;
+	white-space: nowrap;
+}
+
+/* Dropdown Menu Style */
+.dropdown-menu {
+	position: absolute;
+	top: 4.5rem;
+	right: 1rem;
+	padding: 0 1rem;
+	background-color: #05396c;
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.1);
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out;
+	display: flex;
+	flex-direction: column;
+}
+
+.dropdown-menu.open {
+	max-height: 250px;
+	/* Adjust based on content height */
+}
+
+/* Modal overlay */
+.modal-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1001;
+}
+
+/* Modal content */
+.modal-content {
+	background: white;
+	padding: 2rem;
+	border-radius: 8px;
+	width: 90%;
+	max-width: 400px;
+	position: relative;
+	text-align: center;
+}
+
+/* Close button */
+.close-button {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	background: transparent;
+	border: none;
+	font-size: 1.5rem;
+	cursor: pointer;
+}
+
+/* Form styles */
+.modal-content form {
+	display: flex;
+	flex-direction: column;
+}
+
+.modal-content form label {
+	margin: 1rem 0 0.5rem;
+}
+
+.modal-content form input {
+	padding: 0.5rem;
+	margin-bottom: 1rem;
+}
+
+.modal-content form button {
+	padding: 0.75rem;
+	background-color: #05396c;
+	color: white;
+	border: none;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+/* Style for the toggle link */
+.toggle-link {
+	color: #34db47;
+	cursor: pointer;
+	text-decoration: underline;
+}
+
+.toggle-link:hover {
+	color: #84b929;
+}
+
+.user-circle {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 35px;
+	height: 35px;
+	background-color: #2dc6cb;
+	color: white;
+	font-weight: bold;
+	font-size: 1.2rem;
+	border-radius: 50%;
+	cursor: pointer;
+	margin-right: 2rem;
+}
+
+/* Profile Menu */
+.profile-menu {
+	position: absolute;
+	top: 4.5rem;
+	padding: 0 1rem;
+	background-color: #05396c;
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.1);
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out;
+	display: flex;
+	flex-direction: column;
+	translate: -80px;
+	width: 100px
+}
+
+.profile-menu.open {
+	max-height: 250px;
+	/* Adjust based on content height */
+}
+
+.profile-link {
+	color: white;
+	padding: 0.5rem 1rem;
+	text-decoration: none;
+	font-size: 0.9rem;
+}
+
+.profile-link:hover {
+	background-color: #2e887e;
+}
+
+/* Notification Menu */
+.notifications-icon {
+	position: relative;
+	cursor: pointer;
+	margin-right: 2rem;
+}
+
+.notifications-dropdown {
+	position: absolute;
+	top: 3rem;
+	padding: 0 1rem;
+	background-color: #05396c;
+	border-radius: 0.5rem;
+	box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.1);
+	max-height: 0;
+	overflow: hidden;
+	transition: max-height 0.3s ease-out;
+	display: flex;
+	flex-direction: column;
+	translate: -300px;
+	width: 300px
+}
+
+.notifications-dropdown.open {
+	max-height: 300px;
+}
+
+.notification-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: #0539b0;
+	border-radius: 10px;
+	margin: 0.5rem;
+}
+
+.notification-item p {
+	color: white;
+	padding: 0.5rem;
+	margin: 0;
+}
+
+.notification-item a {
+	color: white;
+	text-decoration: none;
+	margin-right: 1rem;
+}
+
+.notification-item.unread {
+	font-weight: bold;
+	background: #0c6fa8;
+}
+
+.notification-dot {
+	position: absolute;
+	top: -4px;
+	right: -4px;
+	width: 8px;
+	height: 8px;
+	background-color: red;
+	border-radius: 50%;
+}

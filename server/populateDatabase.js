@@ -1,5 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcrypt');
+const fs = require('fs');
+const path = require('path');
 const saltRounds = 10;
 const { eachDayOfInterval, format, parseISO } = require('date-fns');
 
@@ -156,8 +158,9 @@ const createEventsFromRentals = (rentals) => {
 			organizer_id: rental.user_id,
 			name: customEvent.name,
 			description: customEvent.description,
-			event_date_start: rental.start_date,
-			event_date_end: rental.end_date,
+			start_date: rental.start_date,
+			end_date: rental.end_date,
+			invite_only: Math.random() < 0.2 ? 1 : 0, // 50% chance of being invite-only
 		};
 	});
 };
@@ -174,7 +177,7 @@ const createInvitationsForEvents = async (events) => {
 		for (const event of shuffledEvents) {
 			// Check for overlap with the user's already accepted invitations
 			const hasOverlap = acceptedInvitationsForUser.some(inv =>
-				(event.event_date_start <= inv.event_date_end && event.event_date_end >= inv.event_date_start)
+				(event.start_date <= inv.end_date && event.end_date >= inv.start_date)
 			);
 
 			// If no overlap, mark as 'Accepted' and add to accepted invitations
@@ -183,8 +186,8 @@ const createInvitationsForEvents = async (events) => {
 
 			if (status === 'Accepted') {
 				acceptedInvitationsForUser.push({
-					event_date_start: event.event_date_start,
-					event_date_end: event.event_date_end
+					start_date: event.start_date,
+					end_date: event.end_date
 				});
 			}
 		}
@@ -288,15 +291,37 @@ const insertUser = (user) => {
 	});
 };
 
-// Insert a single venue
-const insertVenue = (venue) => {
+// Insert a single venue with a thumbnail
+const insertVenueWithThumbnail = (venue, thumbnailImageId) => {
 	return new Promise((resolve, reject) => {
 		db.run(
-			`INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
-			[venue.owner_id, venue.name, venue.location, venue.description, venue.capacity, venue.price],
+			`INSERT INTO Venues (owner_id, name, location, description, capacity, price, thumbnail_image_id) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			[
+				venue.owner_id,
+				venue.name,
+				venue.location,
+				venue.description,
+				venue.capacity,
+				venue.price,
+				thumbnailImageId,
+			],
 			function (err) {
-				if (err) return reject('Error adding venue: ' + err.message);
-				console.log(`Venue added with ID: ${this.lastID}`);
+				if (err) return reject("Error adding venue: " + err.message);
+				resolve(this.lastID);
+			}
+		);
+	});
+};
+
+// Insert a single image
+const insertImage = (image) => {
+	return new Promise((resolve, reject) => {
+		db.run(
+			`INSERT INTO Images (venue_id, image_url) VALUES (?, ?)`,
+			[image.venue_id, image.image_url],
+			function (err) {
+				if (err) return reject("Error adding image: " + err.message);
 				resolve(this.lastID);
 			}
 		);
@@ -337,8 +362,17 @@ const insertRentalBooking = (rental) => {
 const insertEvent = (event) => {
 	return new Promise((resolve, reject) => {
 		db.run(
-			`INSERT INTO Events (venue_id, organizer_id, name, description, event_date_start, event_date_end) VALUES (?, ?, ?, ?, ?, ?)`,
-			[event.venue_id, event.organizer_id, event.name, event.description, event.event_date_start, event.event_date_end],
+			`INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			[
+				event.venue_id,
+				event.organizer_id,
+				event.name,
+				event.description,
+				event.start_date,
+				event.end_date,
+				event.invite_only, // New column
+			],
 			function (err) {
 				if (err) return reject('Error adding event: ' + err.message);
 				console.log(`Event added with ID: ${this.lastID} for venue ${event.venue_id}`);
@@ -407,16 +441,87 @@ const populateUsers = async () => {
 	console.log('All users have been added');
 };
 
-// Populate venues
-const populateVenues = async () => {
-	for (const venue of venues) {
+const populateVenuesWithImages = async () => {
+	const uploadsDirectory = path.join(__dirname, './uploads'); // Directory for uploaded images
+
+	for (let i = 0; i < venues.length; i++) {
+		const venue = venues[i];
+		const imageFile = `venue${i + 1}.webp`; // Image name based on the venue index
+		const imagePath = `/uploads/${imageFile}`; // Path for database entry
+		const fullImagePath = path.join(uploadsDirectory, imageFile); // Full path for existence check
+
+		console.log(`Processing venue: ${venue.name}, Image File: ${imageFile}, Path: ${imagePath}`);
+
 		try {
-			await insertVenue(venue);
+			// Check if the image file exists
+			if (!fs.existsSync(fullImagePath)) {
+				console.warn(`Image file not found: ${fullImagePath}`);
+				continue; // Skip this venue if the image is missing
+			}
+
+			// Insert the venue first
+			const venueId = await new Promise((resolve, reject) => {
+				db.run(
+					`INSERT INTO Venues (owner_id, name, location, description, capacity, price, thumbnail_image_id) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+					[
+						venue.owner_id,
+						venue.name,
+						venue.location,
+						venue.description,
+						venue.capacity,
+						venue.price,
+						null, // Temporary placeholder for thumbnail_image_id
+					],
+					function (err) {
+						if (err) {
+							console.error(`Error inserting venue "${venue.name}":`, err.message);
+							return reject(err);
+						}
+						resolve(this.lastID);
+					}
+				);
+			});
+
+			console.log(`Venue "${venue.name}" inserted with ID: ${venueId}`);
+
+			// Insert the image with the correct venue_id
+			const imageId = await new Promise((resolve, reject) => {
+				db.run(
+					`INSERT INTO Images (venue_id, image_url) VALUES (?, ?)`,
+					[venueId, imagePath],
+					function (err) {
+						if (err) {
+							console.error(`Error inserting image for venue "${venue.name}":`, err.message);
+							return reject(err);
+						}
+						resolve(this.lastID);
+					}
+				);
+			});
+
+			console.log(`Image "${imageFile}" inserted with ID: ${imageId}`);
+
+			// Update the venue's thumbnail_image_id
+			await new Promise((resolve, reject) => {
+				db.run(
+					`UPDATE Venues SET thumbnail_image_id = ? WHERE venue_id = ?`,
+					[imageId, venueId],
+					function (err) {
+						if (err) {
+							console.error(`Error updating thumbnail_image_id for venue "${venue.name}":`, err.message);
+							return reject(err);
+						}
+						resolve();
+					}
+				);
+			});
+
+			console.log(`Venue "${venue.name}" linked to thumbnail image ID: ${imageId}`);
 		} catch (error) {
-			console.error(error);
+			console.error(`Error processing venue "${venue.name}":`, error.message);
 		}
 	}
-	console.log('All venues have been added');
 };
 
 // Populate available dates dynamically
@@ -512,7 +617,7 @@ const populateCommunityPosts = async () => {
 const populateDatabase = async () => {
 	try {
 		await populateUsers();
-		await populateVenues();
+		await populateVenuesWithImages();
 		await populateAvailableDates();
 		await populateVenueRentals();
 		await populateEventInvitationsNotifications();
