@@ -138,6 +138,7 @@
 	cursor: pointer;
 	margin-bottom: 20px;
 	transition: background-color 0.3s ease;
+	max-width: 200px;
 }
 
 .create-event-button:hover {

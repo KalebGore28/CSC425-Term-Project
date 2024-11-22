@@ -24,7 +24,6 @@
 .venue-card {
 	border: 1px solid #ddd;
 	border-radius: 8px;
-	overflow: hidden;
 	transition: box-shadow 0.4s ease, transform 0.4s ease;
 	will-change: transform, box-shadow;
 	max-width: 400px;
@@ -73,7 +72,6 @@
 .venue-actions {
 	display: flex;
 	justify-content: space-between;
-	padding: 10px;
 }
 
 .edit-button,
@@ -101,4 +99,45 @@
 
 .delete-button:hover {
 	background-color: #d32f2f;
+}
+
+.tab-selector {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.tab-selector button {
+    padding: 10px 20px;
+    margin: 0 5px;
+    border: none;
+    background-color: #ddd;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 5px;
+}
+
+.tab-selector button.active-tab {
+    background-color: #007bff;
+    color: white;
+}
+
+.tab-selector button:hover {
+    background-color: #0056b3;
+    color: white;
+}
+
+.create-event-button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%; /* Span full width of the actions container */
+    text-align: center;
+}
+
+.create-event-button:hover {
+    background-color: #0056b3;
 }

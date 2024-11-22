@@ -2047,6 +2047,35 @@ app.delete('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all rentals for the authenticated user
+app.get('/api/users/me/rented-venues', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    const rentals = await queryDb(`
+          SELECT 
+            vr.rental_id, 
+            vr.start_date, 
+            vr.end_date, 
+            v.venue_id, 
+            v.name, 
+            v.location, 
+            v.description, 
+            v.capacity, 
+            v.price, 
+            (SELECT image_url FROM Images WHERE Images.venue_id = v.venue_id LIMIT 1) AS thumbnail_image
+          FROM Venue_Rentals vr
+          JOIN Venues v ON vr.venue_id = v.venue_id
+          WHERE vr.user_id = ?
+      `, [userId]);
+
+    res.status(200).json({ data: rentals });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch rented venues.' });
+  }
+});
+
 
 // --- AVAILABLE_DATES ENDPOINTS --- ✅
 
