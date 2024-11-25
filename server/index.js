@@ -17,6 +17,9 @@ const crypto = require('crypto');
 const axios = require('axios');
 require('dotenv').config(); // Load environment variables
 
+// Import helper.js file
+const { validateDateRange, checkDateOverlap, validateFields, validateDateFormat } = require('./helpers');
+
 const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
 
 // Initialize Express app
@@ -57,6 +60,7 @@ async function sendEmail(recipientEmail, templateParams) {
 // Load configuration
 const PORT = process.env.PORT || 5001;
 const secretKey = process.env.JWT_SECRET_KEY;
+const refreshSecretKey = process.env.JWT_SECRET_KEY
 const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10; // Number of salt rounds for bcrypt
 
 // Middleware configuration
@@ -84,20 +88,20 @@ const startServer = () => {
   });
 };
 
-// --- UTILITY FUNCTIONS ---
-// Middleware to check for a valid JWT token
 
+
+// Middleware to check for a valid JWT token
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.token; // Retrieve the token from the HTTP-only cookie
+  const token = req.cookies.accessToken; // Use the correct cookie name
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
   jwt.verify(token, secretKey, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Invalid token.' });
+      return res.status(403).json({ error: 'Invalid or expired token.' });
     }
-    req.user = user; // Add user information to request object
+    req.user = user; // Attach user info to the request
     next();
   });
 };
@@ -171,28 +175,6 @@ const runDbQuery = (sql, params = []) => {
 };
 
 // Validators
-const validateDateRange = (start_date, end_date) => {
-  const start = parseISO(start_date); // Ensure the date is parsed as a valid ISO date
-  const end = parseISO(end_date);
-
-  if (isNaN(start) || isNaN(end)) {
-    throw new Error("Invalid date format. Dates must be in YYYY-MM-DD format.");
-  }
-
-  if (isBefore(start, new Date())) {
-    throw new Error("Start date cannot be in the past.");
-  }
-
-  if (isAfter(start, end)) {
-    throw new Error("Start date cannot be after the end date.");
-  }
-
-  // Format dates to YYYY-MM-DD for consistent storage
-  return {
-    start: format(start, "yyyy-MM-dd"),
-    end: format(end, "yyyy-MM-dd"),
-  };
-};
 
 const checkOverlap = (start, end, rentals) => {
   return rentals.some(rental => {
@@ -233,14 +215,6 @@ const validateRegistrationInput = ({ name, email, password }) => {
 
   return true;
 };
-
-const validateDateFormat = (date) => {
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(date)) {
-    throw new Error("Invalid date format. Use YYYY-MM-DD.");
-  }
-};
-
 
 // Authorizers
 const verifyEventAccess = async (event_id, user_id) => {
@@ -297,22 +271,141 @@ const verifyInvitationAccess = async (invitationId, userId) => {
   return { isRecipient, isOrganizer };
 };
 
-// Others
-const hashPassword = async (password) => {
-  return await bcrypt.hash(password, saltRounds);
-};
+// --- AUTHENTICATION FUNCTIONS --- ✅
+app.post('/api/register', async (req, res) => {
+  const { name, email, password } = req.body;
 
-// Helper function: Generate JWT token
-const generateToken = (user) => {
-  return jwt.sign(
-    { user_id: user.user_id, email: user.email },
-    secretKey,
-    { expiresIn: '1h' }
-  );
-};
+  try {
+    // Validate inputs
+    validateFields({ name, email, password }, {
+      name: { required: true, type: 'string' },
+      email: { required: true, type: 'string' },
+      password: { required: true, type: 'string' },
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
 
+  try {
+    // Check if the email is already registered
+    const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Email already registered.' });
+    }
 
-// --- COMMUNITY POSTS ENDPOINTS --- ✅
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Save the user in the database
+    const userId = await runDbQuery(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`, [name, email, hashedPassword]);
+
+    res.status(201).json({ message: 'User registered successfully', user_id: userId });
+  } catch (error) {
+    res.status(500).json({ error: 'An error occurred during registration.' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Validate inputs
+    validateFields({ email, password }, {
+      email: { required: true, type: 'string' },
+      password: { required: true, type: 'string' },
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  try {
+    // Retrieve the user from the database
+    const user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
+
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Generate tokens
+    const accessToken = jwt.sign({ user_id: user.user_id }, secretKey, { expiresIn: '1h' });
+    const refreshToken = jwt.sign({ user_id: user.user_id }, refreshSecretKey, { expiresIn: '7d' });
+
+    // Set the `refreshToken` as an HTTP-only cookie
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+      sameSite: 'Strict', // Prevent CSRF
+      maxAge: 604800000, // 7 days
+    });
+
+    // Set the `accessToken` as an HTTP-only cookie
+    res.cookie('accessToken', accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 3600000, // 1 hour
+    });
+
+    // Optionally send the access token in the response body
+    res.json({ message: 'Login successful' });
+  } catch (error) {
+    res.status(500).json({ error: 'An error occurred during login.' });
+  }
+});
+
+app.post('/api/logout', (req, res) => {
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+  });
+  
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+  });
+
+  res.json({ message: 'Logged out successfully' });
+});
+
+app.post('/api/refresh', (req, res) => {
+  const refreshToken = req.cookies.refreshToken; // Refresh token from cookie
+
+  if (!refreshToken) {
+    return res.status(401).json({ error: 'No refresh token provided.' });
+  }
+
+  jwt.verify(refreshToken, refreshSecretKey, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Invalid refresh token.' });
+    }
+
+    // Generate a new access token
+    const newAccessToken = jwt.sign({ user_id: user.user_id }, secretKey, { expiresIn: '1h' });
+
+    // Set the new access token as an HTTP-only cookie
+    res.cookie('accessToken', newAccessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Ensure HTTPS in production
+      sameSite: 'Strict',
+      maxAge: 3600000, // 1 hour
+    });
+
+    res.json({ message: 'Token refreshed successfully' });
+  });
+});
+
+// Invalidate the access token
+app.post('/api/invalidate', (req, res) => {
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+  });
+});
+
+// --- COMMUNITY POSTS ENDPOINTS ---
 
 // Get all posts for an event community
 app.get('/api/events/:event_id/posts', authenticateToken, async (req, res) => {
@@ -1489,91 +1582,80 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
 
 // --- USERS ENDPOINTS --- ✅
 
-// Register a new user
-app.post('/api/register', async (req, res) => {
-  const { name, email, password } = req.body;
+// // Register a new user
+// app.post('/api/register', async (req, res) => {
+//   const { name, email, password } = req.body;
 
-  try {
-    // Validate input
-    validateRegistrationInput({ name, email, password });
+//   try {
+//     // Validate input
+//     validateRegistrationInput({ name, email, password });
 
-    // Check if email already exists
-    const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
-    if (existingUser) {
-      throw new Error("Email already registered. Please use a different email.");
-    }
+//     // Check if email already exists
+//     const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
+//     if (existingUser) {
+//       throw new Error("Email already registered. Please use a different email.");
+//     }
 
-    // Hash the password
-    const hashedPassword = await hashPassword(password);
+//     // Hash the password
+//     const hashedPassword = await hashPassword(password);
 
-    // Insert user into the database
-    const userId = await runDbQuery(
-      `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-      [name, email, hashedPassword]
-    );
+//     // Insert user into the database
+//     const userId = await runDbQuery(
+//       `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+//       [name, email, hashedPassword]
+//     );
 
-    res.status(201).json({ message: "User registered successfully", user_id: userId });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+//     res.status(201).json({ message: "User registered successfully", user_id: userId });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
-// Login
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+// // Login
+// app.post('/api/login', async (req, res) => {
+//   const { email, password } = req.body;
 
-  try {
-    // Validate input
-    if (!email || !password) {
-      throw new Error("Both email and password are required.");
-    }
+//   try {
+//     const user = await getDbRow('SELECT * FROM Users WHERE email = ?', [email]);
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       throw new Error('Invalid email or password.');
+//     }
 
-    // Retrieve the user by email
-    const user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
-    if (!user) {
-      throw new Error("User not found.");
-    }
+//     // Generate JWT token
+//     const token = jwt.sign({ user_id: user.user_id, email: user.email }, secretKey, { expiresIn: '1h' });
 
-    // Compare the provided password with the stored hashed password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new Error("Invalid credentials.");
-    }
+//     // Set the JWT as an HTTP-only cookie
+//     res.cookie('token', token, {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === 'production',
+//       sameSite: 'Strict',
+//       maxAge: 3600000, // 1 hour
+//     });
 
-    // Generate a JWT token
-    const token = generateToken(user);
+//     // Also return the token in the response body (for Postman)
+//     res.json({ token });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
-    // Set the token as an HTTP-only cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Ensure HTTPS in production
-      sameSite: "Strict", // Prevent CSRF attacks
-      maxAge: 3600000, // 1 hour expiration
-    });
+// // Logout (clear cookie)
+// app.post('/api/logout', authenticateToken, (req, res) => {
+//   try {
+//     // Clear the authentication token cookie
+//     res.clearCookie("token", {
+//       httpOnly: true,
+//       secure: process.env.NODE_ENV === "production", // Ensures HTTPS in production
+//       sameSite: "Strict" // Prevents CSRF attacks
+//     });
 
-    res.json({ message: "Login successful" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Logout (clear cookie)
-app.post('/api/logout', authenticateToken, (req, res) => {
-  try {
-    // Clear the authentication token cookie
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Ensures HTTPS in production
-      sameSite: "Strict" // Prevents CSRF attacks
-    });
-
-    // Send a success response
-    res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    // Catch unexpected errors
-    res.status(500).json({ error: "An error occurred during logout" });
-  }
-});
+//     // Send a success response
+//     res.status(200).json({ message: "Logged out successfully" });
+//   } catch (error) {
+//     // Catch unexpected errors
+//     res.status(500).json({ error: "An error occurred during logout" });
+//   }
+// });
 
 // Get user auth status
 app.get('/api/auth/session', (req, res) => {
@@ -1834,7 +1916,7 @@ app.delete('/api/venues/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all venues owned by the authenticated user
+// Get all user owned venues - ✅
 app.get('/api/users/me/venues', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
@@ -1917,7 +1999,7 @@ app.post('/api/venues/:venue_id/images', authenticateToken, upload.array('images
   }
 });
 
-// --- USER_VENUE_Rentals ENDPOINTS --- ✅
+// --- USER_VENUE_Rentals ENDPOINTS ---
 
 // Get all user_venue_rentals
 app.get('/api/venue_rentals', async (req, res) => {
@@ -1929,7 +2011,7 @@ app.get('/api/venue_rentals', async (req, res) => {
   }
 });
 
-// Create a new venue rental with event conflict check
+// Create a new venue rental
 app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
   const { venue_id, start_date, end_date } = req.body;

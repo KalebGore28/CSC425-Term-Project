@@ -1,0 +1,662 @@
+{
+	"info": {
+		"_postman_id": "9edaf188-fb1c-4f15-9dca-2c633a22d7f5",
+		"name": "CSC425-Updated-APIs",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "39367937"
+	},
+	"item": [
+		{
+			"name": "Owner User - Authorized Folder",
+			"item": [
+				{
+					"name": "Venue APIs",
+					"item": [
+						{
+							"name": "Get all user venues",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Response status is 200\", function () {",
+											"    pm.response.to.have.status(200); // Ensure the response status is OK",
+											"});",
+											"",
+											"pm.test(\"Response is JSON\", function () {",
+											"    pm.response.to.be.json; // Ensure the response format is JSON",
+											"});",
+											"",
+											"pm.test(\"Response contains data array\", function () {",
+											"    const response = pm.response.json(); // Parse the JSON response",
+											"    pm.expect(response).to.have.property('data').that.is.an('array'); // Check 'data' exists and is an array",
+											"});",
+											"",
+											"pm.test(\"Each venue in data array has expected fields\", function () {",
+											"    const response = pm.response.json();",
+											"    response.data.forEach(venue => {",
+											"        pm.expect(venue).to.have.property('venue_id').that.is.a('number');",
+											"        pm.expect(venue).to.have.property('name').that.is.a('string');",
+											"        pm.expect(venue).to.have.property('location').that.is.a('string');",
+											"        pm.expect(venue).to.have.property('description').that.is.a('string');",
+											"        pm.expect(venue).to.have.property('capacity').that.is.a('number');",
+											"        pm.expect(venue).to.have.property('price').that.is.a('number');",
+											"        pm.expect(venue).to.have.property('thumbnail_image').that.is.a('string');",
+											"    });",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/users/me/venues",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"users",
+										"me",
+										"venues"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Community Endpoints",
+					"item": [
+						{
+							"name": "Get all community posts for an event",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{base_url}}/api/events/{{event_id}}/posts",
+									"host": [
+										"{{base_url}}"
+									],
+									"path": [
+										"api",
+										"events",
+										"{{event_id}}",
+										"posts"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{accessToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							"const baseUrl = pm.collectionVariables.get('base_url'); // Base API URL",
+							"",
+							"// Helper function for handling errors and aborting requests",
+							"function handleAuthError(message, response) {",
+							"    console.error(message, response ? response.json() : '');",
+							"    pm.environment.set('auth_failed', true); // Flag authentication failure",
+							"    pm.execution.setNextRequest(null); // Stop further requests in the collection",
+							"}",
+							"",
+							"// Check if cookies are available in the current session",
+							"const cookies = pm.cookies.jar();",
+							"const hasAccessToken = cookies.get(`${baseUrl}`, 'accessToken');",
+							"const hasRefreshToken = cookies.get(`${baseUrl}`, 'refreshToken');",
+							"",
+							"if (!hasAccessToken && hasRefreshToken) {",
+							"    // No access token but refresh token exists, attempt to refresh",
+							"    console.log('Access token expired. Attempting to refresh...');",
+							"    pm.sendRequest({",
+							"        url: `${baseUrl}/api/refresh`,",
+							"        method: 'POST',",
+							"    }, function (err, res) {",
+							"        if (err || res.status !== 200) {",
+							"            handleAuthError('Failed to refresh access token. Response:', res);",
+							"        } else {",
+							"            console.log('Access token refreshed successfully.');",
+							"            // Proceed with the request as the cookies should now be updated",
+							"        }",
+							"    });",
+							"} else if (!hasAccessToken && !hasRefreshToken) {",
+							"    // No tokens available, perform login",
+							"    console.log('No tokens found. Logging in...');",
+							"    pm.sendRequest({",
+							"        url: `${baseUrl}/api/login`,",
+							"        method: 'POST',",
+							"        header: {",
+							"            'Content-Type': 'application/json',",
+							"        },",
+							"        body: {",
+							"            mode: 'raw',",
+							"            raw: JSON.stringify({",
+							"                email: 'alice.smith@example.com', // Replace with actual credentials",
+							"                password: 'password123', // Replace with actual credentials",
+							"            }),",
+							"        },",
+							"    }, function (err, res) {",
+							"        if (err || res.status !== 200) {",
+							"            handleAuthError('Login failed. Response:', res);",
+							"        } else {",
+							"            console.log('Login successful. Proceeding with request...');",
+							"        }",
+							"    });",
+							"} else {",
+							"    console.log('Valid access token found. Proceeding with request...');",
+							"}"
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"packages": {},
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Authorization APIs",
+			"item": [
+				{
+					"name": "Register Test User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check the status code is 201 Created",
+									"pm.test(\"Response status is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"// Check that the response contains a success message",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\");",
+									"    pm.expect(response.message).to.eql(\"User registered successfully\");",
+									"});",
+									"",
+									"// Check that the response contains a user_id",
+									"pm.test(\"Response contains user_id\", function () {",
+									"    pm.expect(response).to.have.property(\"user_id\");",
+									"    pm.expect(response.user_id).to.be.a(\"number\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"{{test_user_name}}\",\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"{{test_user_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Test User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check the status code is 200 OK",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains a success message",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\");",
+									"    pm.expect(response.message).to.eql(\"Login successful\");",
+									"});",
+									"",
+									"// Check that the cookies include refreshToken and accessToken",
+									"pm.test(\"Cookies include refreshToken and accessToken\", function () {",
+									"    const cookies = pm.cookies;",
+									"    pm.expect(cookies.has('refreshToken')).to.be.true;",
+									"    pm.expect(cookies.has('accessToken')).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"{{test_user_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invalidate AccessToken",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check the status code is 200 OK",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains a success message",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\");",
+									"    pm.expect(response.message).to.eql(\"Access token invalidated successfully\");",
+									"});",
+									"",
+									"// Check that the access token and refresh token cookies are cleared",
+									"pm.test(\"Cookies cleared successfully\", function () {",
+									"    const cookies = pm.cookies;",
+									"    pm.expect(cookies.get('accessToken')).to.be.undefined; // Access token should be cleared",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/invalidate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"invalidate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Getting Protected Info",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 401 (Unauthorized)",
+									"pm.test(\"Response status is 401\", function () {",
+									"    pm.response.to.have.status(401);",
+									"});",
+									"",
+									"// Check that the response is in JSON format",
+									"pm.test(\"Response is JSON\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"// Check that the error message matches \"Access denied. No token provided.\"",
+									"pm.test(\"Response contains access denied error message\", function () {",
+									"    pm.expect(response).to.have.property(\"error\");",
+									"    pm.expect(response.error).to.eql(\"Access denied. No token provided.\");",
+									"});",
+									"",
+									"// Debugging logs",
+									"console.log(\"API /users/me response after invalidate:\", response);"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh AccessToken",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 200 (Success)",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the message is \"Token refreshed successfully\"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\");",
+									"    pm.expect(response.message).to.eql(\"Token refreshed successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Getting Protected Info Again",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 200 (Success)",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains the expected user data fields",
+									"pm.test(\"Response contains valid user data\", function () {",
+									"    pm.expect(response).to.have.property(\"user_id\");",
+									"    pm.expect(response).to.have.property(\"name\");",
+									"    pm.expect(response).to.have.property(\"email\");",
+									"    pm.expect(response).to.have.property(\"created_at\");",
+									"});",
+									"",
+									"// Validate the types of the returned fields",
+									"pm.test(\"Response fields have valid types\", function () {",
+									"    pm.expect(response.user_id).to.be.a(\"number\");",
+									"    pm.expect(response.name).to.be.a(\"string\");",
+									"    pm.expect(response.email).to.be.a(\"string\");",
+									"    pm.expect(response.created_at).to.be.a(\"string\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 200 (Success)",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains the success message",
+									"pm.test(\"Response contains a success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Logged out successfully\");",
+									"});",
+									"",
+									"// Check that both cookies have been removed",
+									"pm.test(\"Both cookies have been removed\", function () {",
+									"    const cookies = pm.cookies.toObject();",
+									"    pm.expect(cookies).to.not.have.property(\"accessToken\");",
+									"    pm.expect(cookies).to.not.have.property(\"refreshToken\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_user_name",
+			"value": "Test User",
+			"type": "string"
+		},
+		{
+			"key": "test_user_email",
+			"value": "testuser@example.com",
+			"type": "string"
+		},
+		{
+			"key": "test_user_password",
+			"value": "testpassword",
+			"type": "string"
+		}
+	]
+}
