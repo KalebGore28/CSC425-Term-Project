@@ -127,9 +127,9 @@ function EventView() {
 	};
 
 	// Handle toggling replies visibility
-	const handlePostReply = async (post_id, content) => {
+	const handlePostReply = async (event_id, post_id, content) => {
 		try {
-			const response = await fetch(`http://localhost:5001/api/posts/${post_id}/reply`, {
+			const response = await fetch(`http://localhost:5001/api/events/${event_id}/posts/${post_id}/replies`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -141,17 +141,18 @@ function EventView() {
 			setReplyingTo(null);
 			setReplyContent("");
 			// Optionally refresh replies
-			toggleViewReplies(post_id);
+			toggleViewReplies(event_id, post_id);
 		} catch (error) {
 			alert(error.message);
 		}
 	};
 
 	// Toggle visibility of replies for a post
-	const toggleViewReplies = async (post_id) => {
+	const toggleViewReplies = async (event_id, post_id) => {
+		console.log(event_id, post_id);
 		if (!showReplies[post_id]) {
 			try {
-				const response = await fetch(`http://localhost:5001/api/posts/${post_id}/replies`, {
+				const response = await fetch(`http://localhost:5001/api/events/${event_id}/posts/${post_id}/replies`, {
 					credentials: "include",
 				});
 				if (!response.ok) {
@@ -168,10 +169,9 @@ function EventView() {
 
 	// Handle deleting a community post
 	const handleDeletePost = async (post_id) => {
-		console.log("Attempting to delete post with ID:", post_id);
 		try {
 			const response = await fetch(
-				`http://localhost:5001/api/events/${event_id}/posts/${post_id}`,
+				`http://localhost:5001/api/posts/${post_id}`,
 				{
 					method: "DELETE",
 					credentials: "include",
@@ -234,11 +234,11 @@ function EventView() {
 	const handleBackClick = () => navigate("/my-events");
 
 	// Handle toggling like/unlike
-	const handleToggleLikePost = async (post_id, liked) => {
+	const handleToggleLikePost = async (event_id, post_id, liked) => {
 		try {
 			const url = liked
-				? `http://localhost:5001/api/posts/${post_id}/unlike`
-				: `http://localhost:5001/api/posts/${post_id}/like`;
+				? `http://localhost:5001/api/events/${event_id}/posts/${post_id}/unlike`
+				: `http://localhost:5001/api/events/${event_id}/posts/${post_id}/like`;
 
 			const response = await fetch(url, {
 				method: "PATCH",
@@ -385,39 +385,30 @@ function EventView() {
 						)}
 
 						{/* Attendees List */}
-						{attendees.filter((attendee) =>
-							isOrganizer
-								? filterStatus === "All" || attendee.status === filterStatus
-								: attendee.status === "Accepted"
-						).length > 0 ? (
+						{attendees.length > 0 ? (
 							<ul>
-								{attendees
-									.filter((attendee) =>
-										isOrganizer
-											? filterStatus === "All" || attendee.status === filterStatus
-											: attendee.status === "Accepted"
-									)
-									.map((attendee) => (
-										<li key={attendee.user_id} className="attendee-item">
-											<span>
-												{attendee.name} - {attendee.status}
-											</span>
-											{/* Organizer can remove attendees */}
-											{isOrganizer && (
-												<button
-													className="remove-attendee-button"
-													onClick={() => handleRemoveAttendee(attendee.user_id)}
-												>
-													Remove
-												</button>
-											)}
-										</li>
-									))}
+								{attendees.map((attendee) => (
+									<li key={attendee.user_id} className="attendee-item">
+										<span>
+											{attendee.name}
+											{isOrganizer && attendee.status && ` - ${attendee.status}`}
+										</span>
+										{/* Organizer can remove attendees */}
+										{isOrganizer && (
+											<button
+												className="remove-attendee-button"
+												onClick={() => handleRemoveAttendee(attendee.user_id)}
+											>
+												Remove
+											</button>
+										)}
+									</li>
+								))}
 							</ul>
 						) : (
 							<p>
 								{isOrganizer
-									? "No attendees found for the selected filter."
+									? "No attendees found."
 									: "No attendees have accepted the invitation yet."}
 							</p>
 						)}
@@ -440,7 +431,7 @@ function EventView() {
 											<div className="post-actions">
 												<button
 													className={`like-button ${post.likedByCurrentUser ? "liked" : ""}`}
-													onClick={() => handleToggleLikePost(post.post_id, post.likedByCurrentUser)}
+													onClick={() => handleToggleLikePost(post.event_id, post.post_id, post.likedByCurrentUser)}
 												>
 													{post.likedByCurrentUser ? "Unlike" : "Like"} ({post.like_count})
 												</button>
@@ -452,7 +443,7 @@ function EventView() {
 												</button>
 												<button
 													className="view-replies-button"
-													onClick={() => toggleViewReplies(post.post_id)} // Toggles replies visibility
+													onClick={() => toggleViewReplies(post.event_id, post.post_id)} // Toggles replies visibility
 												>
 													{showReplies[post.post_id] ? "Hide Replies" : "View Replies"}
 												</button>
@@ -471,7 +462,7 @@ function EventView() {
 													className="reply-form"
 													onSubmit={(e) => {
 														e.preventDefault();
-														handlePostReply(post.post_id, replyContent);
+														handlePostReply(post.event_id, post.post_id, replyContent);
 													}}
 												>
 													<textarea

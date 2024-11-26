@@ -7,182 +7,6 @@
 	},
 	"item": [
 		{
-			"name": "Owner User - Authorized Folder",
-			"item": [
-				{
-					"name": "Venue APIs",
-					"item": [
-						{
-							"name": "Get all user venues",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"Response status is 200\", function () {",
-											"    pm.response.to.have.status(200); // Ensure the response status is OK",
-											"});",
-											"",
-											"pm.test(\"Response is JSON\", function () {",
-											"    pm.response.to.be.json; // Ensure the response format is JSON",
-											"});",
-											"",
-											"pm.test(\"Response contains data array\", function () {",
-											"    const response = pm.response.json(); // Parse the JSON response",
-											"    pm.expect(response).to.have.property('data').that.is.an('array'); // Check 'data' exists and is an array",
-											"});",
-											"",
-											"pm.test(\"Each venue in data array has expected fields\", function () {",
-											"    const response = pm.response.json();",
-											"    response.data.forEach(venue => {",
-											"        pm.expect(venue).to.have.property('venue_id').that.is.a('number');",
-											"        pm.expect(venue).to.have.property('name').that.is.a('string');",
-											"        pm.expect(venue).to.have.property('location').that.is.a('string');",
-											"        pm.expect(venue).to.have.property('description').that.is.a('string');",
-											"        pm.expect(venue).to.have.property('capacity').that.is.a('number');",
-											"        pm.expect(venue).to.have.property('price').that.is.a('number');",
-											"        pm.expect(venue).to.have.property('thumbnail_image').that.is.a('string');",
-											"    });",
-											"});"
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/users/me/venues",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"users",
-										"me",
-										"venues"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Community Endpoints",
-					"item": [
-						{
-							"name": "Get all community posts for an event",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{base_url}}/api/events/{{event_id}}/posts",
-									"host": [
-										"{{base_url}}"
-									],
-									"path": [
-										"api",
-										"events",
-										"{{event_id}}",
-										"posts"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				}
-			],
-			"auth": {
-				"type": "bearer",
-				"bearer": [
-					{
-						"key": "token",
-						"value": "{{accessToken}}",
-						"type": "string"
-					}
-				]
-			},
-			"event": [
-				{
-					"listen": "prerequest",
-					"script": {
-						"type": "text/javascript",
-						"packages": {},
-						"exec": [
-							"const baseUrl = pm.collectionVariables.get('base_url'); // Base API URL",
-							"",
-							"// Helper function for handling errors and aborting requests",
-							"function handleAuthError(message, response) {",
-							"    console.error(message, response ? response.json() : '');",
-							"    pm.environment.set('auth_failed', true); // Flag authentication failure",
-							"    pm.execution.setNextRequest(null); // Stop further requests in the collection",
-							"}",
-							"",
-							"// Check if cookies are available in the current session",
-							"const cookies = pm.cookies.jar();",
-							"const hasAccessToken = cookies.get(`${baseUrl}`, 'accessToken');",
-							"const hasRefreshToken = cookies.get(`${baseUrl}`, 'refreshToken');",
-							"",
-							"if (!hasAccessToken && hasRefreshToken) {",
-							"    // No access token but refresh token exists, attempt to refresh",
-							"    console.log('Access token expired. Attempting to refresh...');",
-							"    pm.sendRequest({",
-							"        url: `${baseUrl}/api/refresh`,",
-							"        method: 'POST',",
-							"    }, function (err, res) {",
-							"        if (err || res.status !== 200) {",
-							"            handleAuthError('Failed to refresh access token. Response:', res);",
-							"        } else {",
-							"            console.log('Access token refreshed successfully.');",
-							"            // Proceed with the request as the cookies should now be updated",
-							"        }",
-							"    });",
-							"} else if (!hasAccessToken && !hasRefreshToken) {",
-							"    // No tokens available, perform login",
-							"    console.log('No tokens found. Logging in...');",
-							"    pm.sendRequest({",
-							"        url: `${baseUrl}/api/login`,",
-							"        method: 'POST',",
-							"        header: {",
-							"            'Content-Type': 'application/json',",
-							"        },",
-							"        body: {",
-							"            mode: 'raw',",
-							"            raw: JSON.stringify({",
-							"                email: 'alice.smith@example.com', // Replace with actual credentials",
-							"                password: 'password123', // Replace with actual credentials",
-							"            }),",
-							"        },",
-							"    }, function (err, res) {",
-							"        if (err || res.status !== 200) {",
-							"            handleAuthError('Login failed. Response:', res);",
-							"        } else {",
-							"            console.log('Login successful. Proceeding with request...');",
-							"        }",
-							"    });",
-							"} else {",
-							"    console.log('Valid access token found. Proceeding with request...');",
-							"}"
-						]
-					}
-				},
-				{
-					"listen": "test",
-					"script": {
-						"type": "text/javascript",
-						"packages": {},
-						"exec": [
-							""
-						]
-					}
-				}
-			]
-		},
-		{
 			"name": "Authorization APIs",
 			"item": [
 				{
@@ -276,7 +100,6 @@
 									"// Check that the cookies include refreshToken and accessToken",
 									"pm.test(\"Cookies include refreshToken and accessToken\", function () {",
 									"    const cookies = pm.cookies;",
-									"    pm.expect(cookies.has('refreshToken')).to.be.true;",
 									"    pm.expect(cookies.has('accessToken')).to.be.true;",
 									"});"
 								],
@@ -315,240 +138,6 @@
 							"path": [
 								"api",
 								"login"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Invalidate AccessToken",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Parse the JSON response",
-									"const response = pm.response.json();",
-									"",
-									"// Check the status code is 200 OK",
-									"pm.test(\"Response status is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"// Check that the response contains a success message",
-									"pm.test(\"Response contains success message\", function () {",
-									"    pm.expect(response).to.have.property(\"message\");",
-									"    pm.expect(response.message).to.eql(\"Access token invalidated successfully\");",
-									"});",
-									"",
-									"// Check that the access token and refresh token cookies are cleared",
-									"pm.test(\"Cookies cleared successfully\", function () {",
-									"    const cookies = pm.cookies;",
-									"    pm.expect(cookies.get('accessToken')).to.be.undefined; // Access token should be cleared",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/invalidate",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"invalidate"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Test Getting Protected Info",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Parse the JSON response",
-									"const response = pm.response.json();",
-									"",
-									"// Check that the response status code is 401 (Unauthorized)",
-									"pm.test(\"Response status is 401\", function () {",
-									"    pm.response.to.have.status(401);",
-									"});",
-									"",
-									"// Check that the response is in JSON format",
-									"pm.test(\"Response is JSON\", function () {",
-									"    pm.response.to.be.json;",
-									"});",
-									"",
-									"// Check that the error message matches \"Access denied. No token provided.\"",
-									"pm.test(\"Response contains access denied error message\", function () {",
-									"    pm.expect(response).to.have.property(\"error\");",
-									"    pm.expect(response.error).to.eql(\"Access denied. No token provided.\");",
-									"});",
-									"",
-									"// Debugging logs",
-									"console.log(\"API /users/me response after invalidate:\", response);"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/users/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Refresh AccessToken",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Parse the JSON response",
-									"const response = pm.response.json();",
-									"",
-									"// Check that the response status code is 200 (Success)",
-									"pm.test(\"Response status is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"// Check that the message is \"Token refreshed successfully\"",
-									"pm.test(\"Response contains success message\", function () {",
-									"    pm.expect(response).to.have.property(\"message\");",
-									"    pm.expect(response.message).to.eql(\"Token refreshed successfully\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/refresh",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"refresh"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Test Getting Protected Info Again",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Parse the JSON response",
-									"const response = pm.response.json();",
-									"",
-									"// Check that the response status code is 200 (Success)",
-									"pm.test(\"Response status is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"// Check that the response contains the expected user data fields",
-									"pm.test(\"Response contains valid user data\", function () {",
-									"    pm.expect(response).to.have.property(\"user_id\");",
-									"    pm.expect(response).to.have.property(\"name\");",
-									"    pm.expect(response).to.have.property(\"email\");",
-									"    pm.expect(response).to.have.property(\"created_at\");",
-									"});",
-									"",
-									"// Validate the types of the returned fields",
-									"pm.test(\"Response fields have valid types\", function () {",
-									"    pm.expect(response.user_id).to.be.a(\"number\");",
-									"    pm.expect(response.name).to.be.a(\"string\");",
-									"    pm.expect(response.email).to.be.a(\"string\");",
-									"    pm.expect(response.created_at).to.be.a(\"string\");",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						},
-						{
-							"listen": "prerequest",
-							"script": {
-								"exec": [
-									""
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/users/me",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"users",
-								"me"
 							]
 						}
 					},
@@ -611,6 +200,1012 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Login Test User Again",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check the status code is 200 OK",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains a success message",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\");",
+									"    pm.expect(response.message).to.eql(\"Login successful\");",
+									"});",
+									"",
+									"// Check that the cookies include refreshToken and accessToken",
+									"pm.test(\"Cookies include refreshToken and accessToken\", function () {",
+									"    const cookies = pm.cookies;",
+									"    pm.expect(cookies.has('accessToken')).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"{{test_user_email}}\",\n    \"password\": \"{{test_user_password}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the user deletion success message",
+									"pm.test(\"User deletion message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"User account deleted successfully\");",
+									"});",
+									"",
+									"// Verify that the token cookie is cleared",
+									"pm.test(\"Token cookie is cleared upon user deletion\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"token\");",
+									"    pm.expect(tokenCookie).to.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Community Posts APIs",
+			"item": [
+				{
+					"name": "Login in event organizer 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"accessToken\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get posts from event 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the status code is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that response has a \"data\" property and it is an array",
+									"pm.test(\"Response contains 'data' array\", function () {",
+									"    pm.expect(response).to.have.property(\"data\").that.is.an(\"array\");",
+									"});",
+									"",
+									"// Check if all posts in 'data' have the expected fields",
+									"response.data.forEach((post, index) => {",
+									"    pm.test(`Post ${index + 1} has required fields`, () => {",
+									"        pm.expect(post).to.have.property('post_id');",
+									"        pm.expect(post).to.have.property('event_id', 1); // Ensure the event_id matches",
+									"        pm.expect(post).to.have.property('user_id').that.is.a('number');",
+									"        pm.expect(post).to.have.property('content').that.is.a('string');",
+									"        pm.expect(post).to.have.property('created_at').that.is.a('string');",
+									"        pm.expect(post).to.have.property('like_count').that.is.a('number');",
+									"        pm.expect(post).to.have.property('user_name').that.is.a('string');",
+									"        pm.expect(post).to.have.property('liked_by').that.is.an('array');",
+									"    });",
+									"",
+									"    // Check if liked_by contains numbers",
+									"    pm.test(`Post ${index + 1} liked_by contains only numbers`, () => {",
+									"        post.liked_by.forEach(userId => {",
+									"            pm.expect(userId).to.be.a('number');",
+									"        });",
+									"    });",
+									"});",
+									"",
+									"// Validate the response time",
+									"pm.test(\"Response time is less than 500ms\", () => {",
+									"    pm.expect(pm.response.responseTime).to.be.below(500);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create a new post in event 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201 Created\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response body contains success message and ID\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property(\"message\").that.is.a(\"string\");",
+									"    pm.expect(response).to.have.property(\"post_id\").that.is.a(\"number\"); // Adjust key name based on the response",
+									"});",
+									"",
+									"// Store the ID in a collection variable",
+									"pm.test(\"Store post_id in collection variable\", function () {",
+									"    const response = pm.response.json();",
+									"    const postId = response.post_id; // Adjust key name based on the response",
+									"    pm.collectionVariables.set(\"post_id\", postId); // Store in a collection variable",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\" : \"Hello everyone! I'm so excted for tis evnt!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Edit post in event 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response body contains success message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property(\"message\", \"Post updated successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\" : \"Hello everyone! I'm so excited for this event!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create a reply to new post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has post_id and success message\", function () {",
+									"    const jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property(\"reply_id\");",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Reply posted successfully\");",
+									"    ",
+									"    // Store the post_id in a collection variable",
+									"    pm.collectionVariables.set(\"reply_id\", jsonData.reply_id);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"content\" : \"This is a reply\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{post_id}}/replies",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{post_id}}",
+								"replies"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get replies from new post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response body contains data array\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property(\"data\").that.is.an(\"array\");",
+									"});",
+									"",
+									"pm.test(\"Response contains valid reply structure\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response.data).to.not.be.empty; // Ensure there is at least one reply",
+									"    response.data.forEach(reply => {",
+									"        pm.expect(reply).to.have.property(\"post_id\").that.is.a(\"number\");",
+									"        pm.expect(reply).to.have.property(\"content\").that.is.a(\"string\");",
+									"        pm.expect(reply).to.have.property(\"created_at\").that.is.a(\"number\");",
+									"        pm.expect(reply).to.have.property(\"like_count\").that.is.a(\"number\");",
+									"        pm.expect(reply).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"        pm.expect(reply).to.have.property(\"user_name\").that.is.a(\"string\");",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{post_id}}/replies",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{post_id}}",
+								"replies"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Like community post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Post liked successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{post_id}}/like",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{post_id}}",
+								"like"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Like community post reply",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Post liked successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{reply_id}}/like",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{reply_id}}",
+								"like"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unlike community post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Post unliked successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{post_id}}/unlike",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{post_id}}",
+								"unlike"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Unlike community post reply",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"const response = pm.response.json();",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Post unliked successfully\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/posts/{{reply_id}}/unlike",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"posts",
+								"{{reply_id}}",
+								"unlike"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete post reply",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property(\"message\", \"Post deleted successfully\");",
+									"});",
+									"",
+									"// Clean up collection variable for post_id after deletion",
+									"pm.test(\"Remove post_id from collection variables\", function () {",
+									"    const replyId = pm.collectionVariables.get(\"reply_id\");",
+									"    ",
+									"    pm.expect(replyId).to.not.be.undefined;",
+									"",
+									"    pm.collectionVariables.unset(\"reply_id\");",
+									"    console.log(\"post_id removed from collection variables\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{reply_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{reply_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete post in event 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 OK\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is in JSON format\", function () {",
+									"    pm.response.to.be.json;",
+									"});",
+									"",
+									"pm.test(\"Response contains success message\", function () {",
+									"    const response = pm.response.json();",
+									"    pm.expect(response).to.have.property(\"message\", \"Post deleted successfully\");",
+									"});",
+									"",
+									"// Clean up collection variable for post_id after deletion",
+									"pm.test(\"Remove post_id from collection variables\", function () {",
+									"    const postId = pm.collectionVariables.get(\"post_id\");",
+									"    ",
+									"    pm.expect(postId).to.not.be.undefined;",
+									"",
+									"    pm.collectionVariables.unset(\"post_id\");",
+									"    console.log(\"post_id removed from collection variables\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/posts/{{post_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"posts",
+								"{{post_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout of event organizer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Event APIs",
+			"item": [
+				{
+					"name": "Get all events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the response JSON",
+									"let responseData = pm.response.json();",
+									"",
+									"// Check the response status is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check the response contains a 'data' array",
+									"pm.test(\"Response has a 'data' field that is an array\", function () {",
+									"    pm.expect(responseData).to.have.property(\"data\").that.is.an(\"array\");",
+									"});",
+									"",
+									"// Check that each item in the array has the required properties",
+									"pm.test(\"Each event has the required fields\", function () {",
+									"    responseData.data.forEach(event => {",
+									"        pm.expect(event).to.have.property(\"event_id\").that.is.a(\"number\");",
+									"        pm.expect(event).to.have.property(\"event_name\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"description\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"start_date\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"venue_name\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"venue_location\").that.is.a(\"string\");",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get all users events",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the response JSON",
+									"let responseData = pm.response.json();",
+									"",
+									"// Check the response status is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check the response contains a 'data' array",
+									"pm.test(\"Response has a 'data' field that is an array\", function () {",
+									"    pm.expect(responseData).to.have.property(\"data\").that.is.an(\"array\");",
+									"});",
+									"",
+									"// Validate required fields for each event in the data array",
+									"pm.test(\"Each event has the required fields\", function () {",
+									"    responseData.data.forEach(event => {",
+									"        pm.expect(event).to.have.property(\"event_id\").that.is.a(\"number\");",
+									"        pm.expect(event).to.have.property(\"event_name\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"start_date\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"end_date\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"venue_name\").that.is.a(\"string\");",
+									"        pm.expect(event).to.have.property(\"venue_location\").that.is.a(\"string\");",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/users/me/events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"users",
+								"me",
+								"events"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login in event organizer 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"accessToken\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get attendees for event 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the response JSON",
+									"let responseData = pm.response.json();",
+									"",
+									"// Check the response status is 200",
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check the response contains a 'data' array",
+									"pm.test(\"Response has a 'data' field that is an array\", function () {",
+									"    pm.expect(responseData).to.have.property(\"data\").that.is.an(\"array\");",
+									"});",
+									"",
+									"// Validate required fields for each user in the data array",
+									"pm.test(\"Each user has the required fields\", function () {",
+									"    responseData.data.forEach(user => {",
+									"        pm.expect(user).to.have.property(\"user_id\").that.is.a(\"number\");",
+									"        pm.expect(user).to.have.property(\"name\").that.is.a(\"string\");",
+									"        pm.expect(user).to.have.property(\"status\").that.is.a(\"string\");",
+									"    });",
+									"});",
+									"",
+									"// Check for valid 'status' values",
+									"pm.test(\"Each user status is valid\", function () {",
+									"    const validStatuses = [\"Accepted\", \"Sent\", \"Declined\"];",
+									"    responseData.data.forEach(user => {",
+									"        pm.expect(validStatuses).to.include(user.status);",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/events/{{event_id}}/attendees",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"events",
+								"{{event_id}}",
+								"attendees"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
@@ -657,6 +1252,15 @@
 			"key": "test_user_password",
 			"value": "testpassword",
 			"type": "string"
+		},
+		{
+			"key": "event_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "invitation_id",
+			"value": ""
 		}
 	]
 }

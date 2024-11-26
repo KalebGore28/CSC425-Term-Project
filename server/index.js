@@ -60,7 +60,6 @@ async function sendEmail(recipientEmail, templateParams) {
 // Load configuration
 const PORT = process.env.PORT || 5001;
 const secretKey = process.env.JWT_SECRET_KEY;
-const refreshSecretKey = process.env.JWT_SECRET_KEY
 const saltRounds = parseInt(process.env.SALT_ROUNDS) || 10; // Number of salt rounds for bcrypt
 
 // Middleware configuration
@@ -88,8 +87,6 @@ const startServer = () => {
   });
 };
 
-
-
 // Middleware to check for a valid JWT token
 const authenticateToken = (req, res, next) => {
   const token = req.cookies.accessToken; // Use the correct cookie name
@@ -107,7 +104,6 @@ const authenticateToken = (req, res, next) => {
 };
 
 // Middleware to restrict access to internal requests
-
 const internalOnly = (req, res, next) => {
   const internalHeader = req.headers['x-internal-request'];
   if (!internalHeader || internalHeader !== 'your-secure-value') {
@@ -174,47 +170,7 @@ const runDbQuery = (sql, params = []) => {
   });
 };
 
-// Validators
-
-const checkOverlap = (start, end, rentals) => {
-  return rentals.some(rental => {
-    const rentalStart = parseISO(rental.start_date);
-    const rentalEnd = parseISO(rental.end_date);
-
-    if (isNaN(rentalStart) || isNaN(rentalEnd)) {
-      console.error("Invalid date in rental:", rental);
-    }
-
-    return (
-      (isBefore(start, rentalEnd) && isAfter(end, rentalStart)) ||
-      isEqual(start, rentalStart) || isEqual(end, rentalEnd)
-    );
-  });
-};
-
-const validateVenueFields = ({ name, location, description, capacity, price }) => {
-  if (!name || !location || !description || !capacity || !price) {
-    throw new Error("All fields (name, location, description, capacity, price) are required.");
-  }
-  if (!Number.isInteger(capacity) || capacity <= 0) {
-    throw new Error("Capacity must be a positive integer.");
-  }
-  if (typeof price !== 'number' || price <= 0) {
-    throw new Error("Price must be a positive number.");
-  }
-};
-
-const validateRegistrationInput = ({ name, email, password }) => {
-  if (!name || !email || !password) {
-    throw new Error("All fields (name, email, password) are required.");
-  }
-
-  if (!/^[a-zA-Z\s]+$/.test(name)) {
-    throw new Error("Name can only contain alphabetic characters and spaces.");
-  }
-
-  return true;
-};
+// --- AUTHORIZATION FUNCTIONS ---
 
 // Authorizers
 const verifyEventAccess = async (event_id, user_id) => {
@@ -228,10 +184,13 @@ const verifyEventAccess = async (event_id, user_id) => {
   );
 
   if (!row.is_organizer && !row.has_accepted_invite) {
-    throw new Error("Access denied. Only users with an accepted invitation or the event organizer can view posts.");
+    throw new Error("Access denied. You are not the organizer or an attendee of this event.");
   }
+
+  return { isOrganizer: row.is_organizer };
 };
 
+//!!@deprecated
 const checkEventAccess = async (event_id, user_id) => {
   const event = await getDbRow(
     `SELECT E.organizer_id, V.owner_id 
@@ -242,14 +201,14 @@ const checkEventAccess = async (event_id, user_id) => {
   );
 
   if (!event) {
-    throw new Error("Event not found.");
+    throw new Error("Event not found");
   }
 
   const isOrganizer = event.organizer_id === user_id;
   const isOwner = event.owner_id === user_id;
 
   if (!isOrganizer && !isOwner) {
-    throw new Error("You do not have permission to modify this event.");
+    throw new Error("You do not have permission to modify this event");
   }
 
   return { isOrganizer, isOwner, event };
@@ -264,440 +223,420 @@ const verifyInvitationAccess = async (invitationId, userId) => {
     [invitationId]
   );
 
-  if (!invitation) throw new Error("Invitation not found.");
+  if (!invitation) throw new Error("Invitation not found");
   const isRecipient = invitation.user_id === userId;
   const isOrganizer = invitation.organizer_id === userId;
 
   return { isRecipient, isOrganizer };
 };
 
+// --- API MIDDLEWARE ---
+const validateInput = (schema) => (req, res, next) => {
+  try {
+    validateFields(req.body, schema);
+    next();
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Middleware for verifying event access
+const verifyEventAccessMiddleware = async (req, res, next) => {
+  const { event_id } = req.params;
+  const user_id = req.user.user_id;
+
+  try {
+    // Perform access verification
+    const { isOrganizer } = await verifyEventAccess(event_id, user_id);
+    req.isOrganizer = isOrganizer;
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    res.status(403).json({ error: error.message });
+  }
+};
+
+// Middleware to check if a post exists
+const checkPostExistsMiddleware = async (req, res, next) => {
+  const { post_id } = req.params;
+
+  try {
+    const post = await getDbRow(`SELECT * FROM Community_Posts WHERE post_id = ?`, [post_id]);
+    if (!post) {
+      return res.status(404).json({ error: "Post not found" });
+    }
+    req.post = post; // Attach the post to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the post." });
+  }
+};
+
 // --- AUTHENTICATION FUNCTIONS --- ✅
-app.post('/api/register', async (req, res) => {
-  const { name, email, password } = req.body;
+// Register a new user
+app.post(
+  '/api/register',
+  validateInput({
+    name: { required: true, type: 'string' },
+    email: { required: true, type: 'string' },
+    password: { required: true, type: 'string' },
+  }),
+  async (req, res) => {
+    const { name, email, password } = req.body;
 
-  try {
-    // Validate inputs
-    validateFields({ name, email, password }, {
-      name: { required: true, type: 'string' },
-      email: { required: true, type: 'string' },
-      password: { required: true, type: 'string' },
-    });
-  } catch (error) {
-    return res.status(400).json({ error: error.message });
-  }
+    try {
+      // Check if the email is already registered
+      const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email already registered.' });
+      }
 
-  try {
-    // Check if the email is already registered
-    const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered.' });
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Save the user in the database
+      const userId = await runDbQuery(
+        `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
+        [name, email, hashedPassword]
+      );
+
+      res.status(201).json({ message: 'User registered successfully', user_id: userId });
+    } catch (error) {
+      res.status(500).json({ error: 'An error occurred during registration.' });
     }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-    // Save the user in the database
-    const userId = await runDbQuery(`INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`, [name, email, hashedPassword]);
-
-    res.status(201).json({ message: 'User registered successfully', user_id: userId });
-  } catch (error) {
-    res.status(500).json({ error: 'An error occurred during registration.' });
   }
-});
+);
 
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+// Login a user
+app.post(
+  '/api/login',
+  validateInput({
+    email: { required: true, type: 'string' },
+    password: { required: true, type: 'string' },
+  }),
+  async (req, res) => {
+    const { email, password } = req.body;
 
-  try {
-    // Validate inputs
-    validateFields({ email, password }, {
-      email: { required: true, type: 'string' },
-      password: { required: true, type: 'string' },
-    });
-  } catch (error) {
-    return res.status(400).json({ error: error.message });
-  }
+    try {
+      // Retrieve the user from the database
+      const user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
 
-  try {
-    // Retrieve the user from the database
-    const user = await getDbRow(`SELECT * FROM Users WHERE email = ?`, [email]);
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // Generate token
+      const accessToken = jwt.sign({ user_id: user.user_id }, secretKey, { expiresIn: '1h' });
+
+      // Set the `accessToken` as an HTTP-only cookie
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 604800000, // 7 days
+      });
+
+      // Send a success response
+      res.json({ message: 'Login successful' });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ error: 'An error occurred during login.' });
     }
-
-    // Generate tokens
-    const accessToken = jwt.sign({ user_id: user.user_id }, secretKey, { expiresIn: '1h' });
-    const refreshToken = jwt.sign({ user_id: user.user_id }, refreshSecretKey, { expiresIn: '7d' });
-
-    // Set the `refreshToken` as an HTTP-only cookie
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // HTTPS only in production
-      sameSite: 'Strict', // Prevent CSRF
-      maxAge: 604800000, // 7 days
-    });
-
-    // Set the `accessToken` as an HTTP-only cookie
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
-      maxAge: 3600000, // 1 hour
-    });
-
-    // Optionally send the access token in the response body
-    res.json({ message: 'Login successful' });
-  } catch (error) {
-    res.status(500).json({ error: 'An error occurred during login.' });
   }
-});
+);
 
+// Logout a user
 app.post('/api/logout', (req, res) => {
   res.clearCookie('accessToken', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Strict',
   });
-  
-  res.clearCookie('refreshToken', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-  });
 
-  res.json({ message: 'Logged out successfully' });
+  return res.json({ message: 'Logged out successfully' });
 });
 
-app.post('/api/refresh', (req, res) => {
-  const refreshToken = req.cookies.refreshToken; // Refresh token from cookie
+// --- COMMUNITY POSTS ENDPOINTS --- ✅
 
-  if (!refreshToken) {
-    return res.status(401).json({ error: 'No refresh token provided.' });
-  }
+// Get all posts for an event community - ✅
+app.get(
+  '/api/events/:event_id/posts',
+  authenticateToken,
+  verifyEventAccessMiddleware, // Verify event access
+  async (req, res) => {
+    const { event_id } = req.params;
 
-  jwt.verify(refreshToken, refreshSecretKey, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid refresh token.' });
+    // Fetch posts
+    try {
+      const posts = await queryDb(
+        `SELECT 
+           CP.post_id, 
+           CP.event_id, 
+           CP.user_id, 
+           CP.content, 
+           CP.created_at, 
+           CP.like_count, 
+           U.name AS user_name, 
+           GROUP_CONCAT(PL.user_id) AS liked_by
+         FROM Community_Posts CP
+         LEFT JOIN Users U ON CP.user_id = U.user_id
+         LEFT JOIN Post_Likes PL ON CP.post_id = PL.post_id
+         WHERE CP.event_id = ?
+         GROUP BY CP.post_id`,
+        [event_id]
+      );
+
+      // Transform liked_by into an array of user IDs
+      const transformedPosts = posts.map((post) => ({
+        ...post,
+        liked_by: post.liked_by ? post.liked_by.split(',').map(Number) : [], // Convert to array of numbers
+      }));
+
+      return res.json({ data: transformedPosts });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
-
-    // Generate a new access token
-    const newAccessToken = jwt.sign({ user_id: user.user_id }, secretKey, { expiresIn: '1h' });
-
-    // Set the new access token as an HTTP-only cookie
-    res.cookie('accessToken', newAccessToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Ensure HTTPS in production
-      sameSite: 'Strict',
-      maxAge: 3600000, // 1 hour
-    });
-
-    res.json({ message: 'Token refreshed successfully' });
-  });
-});
-
-// Invalidate the access token
-app.post('/api/invalidate', (req, res) => {
-  res.clearCookie('accessToken', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-  });
-});
-
-// --- COMMUNITY POSTS ENDPOINTS ---
-
-// Get all posts for an event community
-app.get('/api/events/:event_id/posts', authenticateToken, async (req, res) => {
-  const { event_id } = req.params;
-  const user_id = req.user.user_id;
-
-  try {
-    // Verify user access to event posts
-    await verifyEventAccess(event_id, user_id);
-
-    // Fetch community posts with liked_by data
-    const posts = await queryDb(
-      `SELECT 
-         CP.post_id, 
-         CP.event_id, 
-         CP.user_id, 
-         CP.content, 
-         CP.created_at, 
-         CP.like_count, 
-         U.name AS user_name, 
-         GROUP_CONCAT(PL.user_id) AS liked_by
-       FROM Community_Posts CP
-       LEFT JOIN Users U ON CP.user_id = U.user_id
-       LEFT JOIN Post_Likes PL ON CP.post_id = PL.post_id
-       WHERE CP.event_id = ?
-       GROUP BY CP.post_id`,
-      [event_id]
-    );
-
-    // Transform liked_by into an array of user IDs
-    const transformedPosts = posts.map((post) => ({
-      ...post,
-      liked_by: post.liked_by ? post.liked_by.split(',').map(Number) : [], // Convert to array of numbers
-    }));
-
-    res.json({ data: transformedPosts });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
-});
+);
 
-// Add a new community post
-app.post('/api/posts', authenticateToken, async (req, res) => {
-  const user_id = req.user.user_id;
-  const { event_id, content } = req.body;
-
-  try {
-    // Check user invitation status for the event
-    const invitation = await getDbRow(
-      `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
-      [event_id, user_id]
-    );
-    if (!invitation) {
-      throw new Error("You do not have permission to post in this event's community");
-    }
+// Add a new community post - ✅
+app.post(
+  '/api/events/:event_id/posts',
+  authenticateToken, // Middleware to authenticate the token
+  validateInput({ content: { required: true, type: 'string' } }), // Middleware for input validation
+  verifyEventAccessMiddleware, // Middleware for verifying event access
+  async (req, res) => {
+    const { event_id } = req.params;
+    const user_id = req.user.user_id;
+    const { content } = req.body;
 
     // Insert community post
-    const post_id = await runDbQuery(
-      `INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
-      [event_id, user_id, content]
-    );
+    try {
+      const post_id = await runDbQuery(
+        `INSERT INTO Community_Posts (event_id, user_id, content) VALUES (?, ?, ?)`,
+        [event_id, user_id, content]
+      );
 
-    res.json({ post_id, message: "Post created successfully" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+      return res.status(201).json({ post_id, message: "Post created successfully" });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
   }
-});
+);
 
-// Update a community post
-app.put('/api/posts/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const { content } = req.body;
-  const user_id = req.user.user_id;
+// Update a community post - ✅
+app.put(
+  '/api/posts/:post_id',
+  authenticateToken, // Middleware to authenticate the token
+  validateInput({ content: { required: true, type: 'string' } }), // Middleware to validate input
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { post_id } = req.params;
+    const { content } = req.body;
+    const user_id = req.user.user_id;
 
-  try {
-    // Verify post ownership
-    const post = await getDbRow(`SELECT * FROM Community_Posts WHERE post_id = ? AND user_id = ?`, [id, user_id]);
-    if (!post) {
-      throw new Error("You do not have permission to update this post");
+    // Verify post ownership (only the author can update the post)
+    try {
+      const post = await getDbRow(`SELECT * FROM Community_Posts WHERE post_id = ? AND user_id = ?`, [post_id, user_id]);
+      if (!post) {
+        return res.status(403).json({ error: "You do not have permission to update this post" });
+      }
+    } catch (error) {
+      return res.status(403).json({ error: error.message });
     }
 
     // Update post content
-    const changes = await runDbQuery(`UPDATE Community_Posts SET content = ? WHERE post_id = ?`, [content, id]);
-    if (changes === 0) {
-      throw new Error("No changes made to the post");
-    }
+    try {
+      const changes = await runDbQuery(`UPDATE Community_Posts SET content = ? WHERE post_id = ?`, [content, post_id]);
+      if (changes === 0) {
+        return res.status(400).json({ error: "No changes made to the post" });
+      }
 
-    res.json({ message: "Post updated successfully" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+      return res.json({ message: "Post updated successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
-});
+);
 
-// Delete a community post
-app.delete('/api/posts/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const user_id = req.user.user_id;
+// Delete a community post - ✅
+app.delete(
+  '/api/posts/:post_id',
+  authenticateToken, // Middleware to authenticate the token
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { post_id } = req.params;
+    const user_id = req.user.user_id;
 
-  try {
-    // Retrieve post details and verify permissions
-    const post = await getDbRow(
-      `SELECT Community_Posts.post_id, Community_Posts.user_id AS post_author_id, Events.organizer_id
-       FROM Community_Posts 
-       JOIN Events ON Community_Posts.event_id = Events.event_id 
-       WHERE Community_Posts.post_id = ?`,
-      [id]
-    );
+    // Verify post ownership or event organizer
+    try {
+      const post = await getDbRow(
+        `SELECT CP.user_id AS post_author_id, E.organizer_id
+         FROM Community_Posts CP
+         JOIN Events E ON CP.event_id = E.event_id
+         WHERE CP.post_id = ?`,
+        [post_id]
+      );
 
-    if (!post) {
-      throw new Error("Post not found");
-    }
-
-    if (post.post_author_id !== user_id && post.organizer_id !== user_id) {
-      throw new Error("You do not have permission to delete this post");
+      if (post.post_author_id !== user_id && post.organizer_id !== user_id) {
+        return res.status(403).json({ error: "You do not have permission to delete this post" });
+      }
+    } catch (error) {
+      return res.status(403).json({ error: error.message });
     }
 
     // Delete the post
-    await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [id]);
+    try {
+      await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [post_id]);
 
-    res.json({ message: "Post deleted successfully" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+      return res.json({ message: "Post deleted successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
-});
-
-// Delete a specific community post - ✅
-app.delete('/api/events/:event_id/posts/:post_id', authenticateToken, async (req, res) => {
-  const { event_id, post_id } = req.params;
-  const user_id = req.user.user_id;
-
-  try {
-    // Verify the post exists and check permissions
-    const post = await getDbRow(
-      `SELECT CP.post_id, CP.user_id AS author_id, E.organizer_id
-       FROM Community_Posts CP
-       JOIN Events E ON CP.event_id = E.event_id
-       WHERE CP.post_id = ? AND CP.event_id = ?`,
-      [post_id, event_id]
-    );
-
-    if (!post) {
-      throw new Error("Post not found.");
-    }
-
-    // Check if the user is either the author of the post or the organizer of the event
-    if (post.author_id !== user_id && post.organizer_id !== user_id) {
-      throw new Error("You do not have permission to delete this post.");
-    }
-
-    // Delete the post
-    const changes = await runDbQuery(`DELETE FROM Community_Posts WHERE post_id = ?`, [post_id]);
-
-    if (changes === 0) {
-      throw new Error("Failed to delete the post.");
-    }
-
-    res.status(200).json({ message: "Post deleted successfully." });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Like a post - ✅
-app.patch('/api/posts/:post_id/like', authenticateToken, async (req, res) => {
-  const { post_id } = req.params;
-  const user_id = req.user.user_id;
-
-  try {
-    // Check if the user has already liked the post
-    const existingLike = await getDbRow(
-      `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
-      [post_id, user_id]
-    );
-
-    if (existingLike) {
-      throw new Error("User has already liked this post.");
-    }
-
-    // Insert a new like
-    await runDbQuery(
-      `INSERT INTO Post_Likes (post_id, user_id) VALUES (?, ?)`,
-      [post_id, user_id]
-    );
-
-    // Increment the like count in the post
-    await runDbQuery(
-      `UPDATE Community_Posts SET like_count = like_count + 1 WHERE post_id = ?`,
-      [post_id]
-    );
-
-    res.json({ message: "Post liked successfully." });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Unlike a post - ✅
-app.patch('/api/posts/:post_id/unlike', authenticateToken, async (req, res) => {
-  const { post_id } = req.params;
-  const user_id = req.user.user_id;
-
-  try {
-    // Check if the user has liked the post
-    const existingLike = await getDbRow(
-      `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
-      [post_id, user_id]
-    );
-
-    if (!existingLike) {
-      throw new Error("User has not liked this post.");
-    }
-
-    // Remove the like
-    await runDbQuery(
-      `DELETE FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
-      [post_id, user_id]
-    );
-
-    // Decrement the like count in the post
-    await runDbQuery(
-      `UPDATE Community_Posts SET like_count = like_count - 1 WHERE post_id = ?`,
-      [post_id]
-    );
-
-    res.json({ message: "Post unliked successfully." });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Create a reply to a community post - ✅
-app.post('/api/posts/:post_id/reply', authenticateToken, async (req, res) => {
-  const { post_id } = req.params;
-  const user_id = req.user.user_id;
-  const { content } = req.body;
-
-  try {
-    if (!content) {
-      throw new Error("Reply content cannot be empty.");
-    }
-
-    // Ensure the parent post exists
-    const parentPost = await getDbRow(
-      `SELECT * FROM Community_Posts WHERE post_id = ?`,
-      [post_id]
-    );
-    if (!parentPost) {
-      throw new Error("Parent post not found.");
-    }
-
-    // Insert the reply into the database
-    const replyId = await runDbQuery(
-      `INSERT INTO Community_Posts (event_id, user_id, content, parent_post_id, created_at) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [parentPost.event_id, user_id, content, post_id, new Date()]
-    );
-
-    res.status(201).json({ message: "Reply posted successfully.", reply_id: replyId });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+);
 
 // Get replies for a specific post - ✅
-app.get('/api/posts/:post_id/replies', authenticateToken, async (req, res) => {
-  const { post_id } = req.params;
+app.get(
+  '/api/events/:event_id/posts/:post_id/replies',
+  authenticateToken, // Middleware to authenticate the token
+  verifyEventAccessMiddleware, // Middleware to verify event access
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { post_id } = req.params; // `post_id` is validated by checkPostExistsMiddleware
 
-  try {
-    // Fetch replies for the given post
-    const replies = await queryDb(
-      `SELECT 
-        CP.post_id, 
-        CP.content, 
-        CP.created_at, 
-        CP.like_count, 
-        CP.user_id, -- Include user_id here
-        U.name AS user_name
-       FROM Community_Posts CP
-       JOIN Users U ON CP.user_id = U.user_id
-       WHERE CP.parent_post_id = ?`,
-      [post_id]
-    );
+    try {
+      // Fetch replies for the given post
+      const replies = await queryDb(
+        `SELECT 
+          CP.post_id, 
+          CP.content, 
+          CP.created_at, 
+          CP.like_count, 
+          CP.user_id,
+          U.name AS user_name
+         FROM Community_Posts CP
+         JOIN Users U ON CP.user_id = U.user_id
+         WHERE CP.parent_post_id = ?`,
+        [post_id]
+      );
 
-    res.json({ data: replies });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+      return res.json({ data: replies });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
-});
+);
 
-// --- EVENTS ENDPOINTS --- ✅
+// Create a reply to a community post - ✅
+app.post(
+  '/api/events/:event_id/posts/:post_id/replies',
+  authenticateToken, // Middleware to authenticate the token
+  validateInput({ content: { required: true, type: 'string' } }), // Middleware for input validation
+  verifyEventAccessMiddleware, // Middleware to verify access to the event
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { event_id, post_id } = req.params;
+    const user_id = req.user.user_id;
+    const { content } = req.body;
 
-// Get all events with venue information, excluding invite-only events
+    try {
+      // Insert the reply into the database
+      const reply_id = await runDbQuery(
+        `INSERT INTO Community_Posts (event_id, user_id, content, parent_post_id, created_at) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [event_id, user_id, content, post_id, new Date()]
+      );
+
+      return res.status(201).json({ reply_id, message: "Reply posted successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Like a post - ✅
+app.patch(
+  '/api/events/:event_id/posts/:post_id/like',
+  authenticateToken, // Middleware to authenticate the token
+  verifyEventAccessMiddleware, // Middleware to verify access to the event
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { post_id } = req.params; // post_id is already validated by checkPostExistsMiddleware
+    const user_id = req.user.user_id;
+
+    try {
+      // Check if the user has already liked the post
+      const existingLike = await getDbRow(
+        `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+        [post_id, user_id]
+      );
+
+      if (existingLike) {
+        return res.status(400).json({ error: "User has already liked this post" });
+      }
+
+      // Insert a new like
+      await runDbQuery(
+        `INSERT INTO Post_Likes (post_id, user_id) VALUES (?, ?)`,
+        [post_id, user_id]
+      );
+
+      // Increment the like count in the post
+      await runDbQuery(
+        `UPDATE Community_Posts SET like_count = like_count + 1 WHERE post_id = ?`,
+        [post_id]
+      );
+
+      return res.json({ message: "Post liked successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// Unlike a post - ✅
+app.patch(
+  '/api/events/:event_id/posts/:post_id/unlike',
+  authenticateToken, // Middleware to authenticate the token
+  verifyEventAccessMiddleware, // Middleware to verify access to the event
+  checkPostExistsMiddleware, // Middleware to check if the post exists
+  async (req, res) => {
+    const { post_id } = req.params; // post_id is validated by checkPostExistsMiddleware
+    const user_id = req.user.user_id;
+
+    try {
+      // Check if the user has liked the post
+      const existingLike = await getDbRow(
+        `SELECT * FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+        [post_id, user_id]
+      );
+
+      if (!existingLike) {
+        return res.status(400).json({ error: "User has not liked this post" });
+      }
+
+      // Remove the like
+      await runDbQuery(
+        `DELETE FROM Post_Likes WHERE post_id = ? AND user_id = ?`,
+        [post_id, user_id]
+      );
+
+      // Decrement the like count in the post
+      await runDbQuery(
+        `UPDATE Community_Posts SET like_count = like_count - 1 WHERE post_id = ?`,
+        [post_id]
+      );
+
+      return res.json({ message: "Post unliked successfully" });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+// --- EVENTS ENDPOINTS ---
+
+// Get all events with venue information, excluding invite-only events - ✅
 app.get('/api/events', async (req, res) => {
   try {
     const events = await queryDb(`
@@ -710,15 +649,15 @@ app.get('/api/events', async (req, res) => {
         Venues.location AS venue_location
       FROM Events
       JOIN Venues ON Events.venue_id = Venues.venue_id
-      WHERE Events.invite_only = 0 -- Exclude invite-only events
+      WHERE Events.invite_only = 0
     `);
-    res.json({ data: events });
+    return res.json({ data: events });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving events with venue information." });
+    return res.status(500).json({ error: "Error retrieving events with venue information" });
   }
 });
 
-// Get all events where the authenticated user is the organizer
+// Get all events where the user is the organizer - ✅
 app.get('/api/users/me/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
 
@@ -736,13 +675,64 @@ app.get('/api/users/me/events', authenticateToken, async (req, res) => {
       WHERE E.organizer_id = ?
     `, [userId]);
 
-    res.json({ data: events });
+    return res.json({ data: events });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving events." });
+    return res.status(500).json({ error: "Error retrieving events" });
   }
 });
 
-// Get event details by ID
+// Get all events where the user is invited - ✅
+app.get('/api/users/me/invited-events', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+
+  try {
+    const invited_events = await queryDb(`
+      SELECT 
+        E.event_id, 
+        E.name AS event_name, 
+        E.start_date, 
+        E.end_date, 
+        V.name AS venue_name, 
+        V.location AS venue_location 
+      FROM Invitations I
+      JOIN Events E ON I.event_id = E.event_id
+      JOIN Venues V ON E.venue_id = V.venue_id
+      WHERE I.user_id = ? AND I.status = 'Sent'`,
+      [userId]
+    );
+
+    return res.json({ data: invited_events });
+  } catch (error) {
+    return res.status(500).json({ error: "Error retrieving invited events" });
+  }
+});
+
+// Get all events where the user has accepted the invitation - ✅
+app.get('/api/users/me/accepted-events', authenticateToken, async (req, res) => {
+  const userId = req.user.user_id;
+  try {
+    const accepted_events = await queryDb(
+      `SELECT 
+         E.event_id, 
+         E.name AS event_name, 
+         E.start_date, 
+         E.end_date, 
+         V.name AS venue_name, 
+         V.location AS venue_location 
+       FROM Invitations I
+       JOIN Events E ON I.event_id = E.event_id
+       JOIN Venues V ON E.venue_id = V.venue_id
+       WHERE I.user_id = ? AND I.status = 'Accepted'`,
+      [userId]
+    );
+
+    return res.json({ data: accepted_events });
+  } catch (error) {
+    return res.status(500).json({ error: "Error retrieving accepted events" });
+  }
+});
+
+// Get event details by ID //TODO: Add invite-only check
 app.get('/api/events/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -767,7 +757,7 @@ app.get('/api/events/:id', async (req, res) => {
     );
 
     if (!event) {
-      throw new Error("Event not found.");
+      throw new Error("Event not found");
     }
 
     res.json(event);
@@ -776,61 +766,75 @@ app.get('/api/events/:id', async (req, res) => {
   }
 });
 
-// Get all attendees for an event
-app.get('/api/events/:event_id/attendees', authenticateToken, async (req, res) => {
-  const { event_id } = req.params;
-  const user_id = req.user.user_id;
+// Get all attendees for an event - ✅
+app.get(
+  '/api/events/:event_id/attendees',
+  authenticateToken,
+  verifyEventAccessMiddleware, // Verify event access
+  async (req, res) => {
+    const { event_id } = req.params;
+    const isOrganizer = req.isOrganizer;
 
-  try {
-    // Check user access to event attendees
-    await verifyEventAccess(event_id, user_id);
+    try {
+      var attendees = null;
+      if (isOrganizer) {
+        // Fetch attendees for the event, including their invitation status
+        attendees = await queryDb(
+          `SELECT 
+            Users.user_id, 
+            Users.name, 
+            Invitations.status 
+            FROM Invitations 
+            JOIN Users ON Invitations.user_id = Users.user_id 
+            WHERE Invitations.event_id = ?`,
+          [event_id]
+        );
+      } else {
+        // Fetch attendees for the event, only showing accepted attendees
+        attendees = await queryDb(
+          `SELECT 
+            Users.user_id, 
+            Users.name 
+            FROM Invitations 
+            JOIN Users ON Invitations.user_id = Users.user_id 
+            WHERE Invitations.event_id = ? AND Invitations.status = 'Accepted'`,
+          [event_id]
+        );
+      }
 
-    // Fetch attendees for the event, including their invitation status
-    const attendees = await queryDb(
-      `SELECT 
-         Users.user_id, 
-         Users.name, 
-         Invitations.status 
-       FROM Invitations 
-       JOIN Users ON Invitations.user_id = Users.user_id 
-       WHERE Invitations.event_id = ?`,
-      [event_id]
-    );
-
-    res.json({ data: attendees });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+      res.json({ data: attendees });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
   }
-});
+);
 
 // Remove an attendee from the event (organizers only)
-app.delete('/api/events/:event_id/attendees/:user_id', authenticateToken, async (req, res) => {
-  const { event_id, user_id } = req.params; // Ensure these are correctly extracted
-  const organizerId = req.user.user_id;
+app.delete(
+  '/api/events/:event_id/attendees/:user_id',
+  authenticateToken,
+  verifyEventAccessMiddleware, // Verify event access
+  async (req, res) => {
+    const { event_id, user_id } = req.params; // Ensure these are correctly extracted
+    const isOrganizer = req.isOrganizer;
 
-  try {
-    // Check if the current user is the organizer of the event
-    const event = await getDbRow(`SELECT organizer_id FROM Events WHERE event_id = ?`, [event_id]);
-    if (!event || event.organizer_id !== organizerId) {
-      throw new Error("You are not authorized to remove attendees from this event.");
+    if (!isOrganizer) {
+      return res.status(403).json({ error: "You are not authorized to remove attendees from this event" });
     }
 
-    // Ensure user_id is treated as a string or number properly
-    if (!/^\d+$/.test(user_id)) {
-      throw new Error("Invalid user_id format.");
+    try {
+      // Delete the attendee from the Invitations table
+      await runDbQuery(
+        `DELETE FROM Invitations WHERE event_id = ? AND user_id = ?`,
+        [event_id, parseInt(user_id)] // Convert user_id to an integer
+      );
+
+      res.status(200).json({ message: "Attendee removed successfully" });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-
-    // Delete the attendee from the Invitations table
-    await runDbQuery(
-      `DELETE FROM Invitations WHERE event_id = ? AND user_id = ?`,
-      [event_id, parseInt(user_id)] // Convert user_id to an integer
-    );
-
-    res.status(200).json({ message: "Attendee removed successfully." });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
   }
-});
+);
 
 // Get all user events
 app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
@@ -838,7 +842,7 @@ app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
 
   try {
     if (user_id !== req.user.user_id) {
-      throw new Error("You do not have permission to view events for this user.");
+      throw new Error("You do not have permission to view events for this user");
     }
 
     const events = await queryDb('SELECT * FROM Events WHERE organizer_id = ?', [user_id]);
@@ -856,7 +860,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
   try {
     // Validate required fields
     if (!venue_id || !name || !description || !start_date || !end_date) {
-      throw new Error("Venue ID, name, description, start_date, and end_date are required.");
+      throw new Error("Venue ID, name, description, start_date, and end_date are required");
     }
 
     // Validate date range
@@ -865,7 +869,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     // Check if the venue exists
     const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
     if (!venue) {
-      throw new Error("Venue not found.");
+      throw new Error("Venue not found");
     }
 
     const isOwner = venue.owner_id === userId;
@@ -879,8 +883,8 @@ app.post('/api/events', authenticateToken, async (req, res) => {
         [venue_id, userId]
       );
 
-      if (checkOverlap(start, end, rentals)) {
-        throw new Error("Event dates overlap with an existing rental by another user.");
+      if (checkDateOverlap(start, end, rentals)) {
+        throw new Error("Event dates overlap with an existing rental by another user");
       }
 
       // Insert event for owners
@@ -899,12 +903,12 @@ app.post('/api/events', authenticateToken, async (req, res) => {
       );
 
       if (!rental) {
-        throw new Error("Not authorized to create an event for this venue.");
+        throw new Error("Not authorized to create an event for this venue");
       }
 
       // Check if the event dates are within the rental period
       if (isBefore(start, new Date(rental.start_date)) || isAfter(end, new Date(rental.end_date))) {
-        throw new Error("Event dates must fall within your rental period.");
+        throw new Error("Event dates must fall within your rental period");
       }
 
       // Insert event for renters
@@ -918,7 +922,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     // Fetch the newly created event ID
     const event = await getDbRow(`SELECT last_insert_rowid() AS event_id`);
 
-    res.status(201).json({ message: "Event created successfully.", event_id: event.event_id });
+    res.status(201).json({ message: "Event created successfully", event_id: event.event_id });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -938,12 +942,12 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
     );
 
     if (!event) {
-      throw new Error("Event not found.");
+      throw new Error("Event not found");
     }
 
     // Ensure the user is the organizer
     if (event.organizer_id !== userId) {
-      throw new Error("You are not authorized to update this event.");
+      throw new Error("You are not authorized to update this event");
     }
 
     // Initialize query components
@@ -977,7 +981,7 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
       );
 
       if (conflicts.length > 0) {
-        throw new Error("The updated event dates conflict with another event.");
+        throw new Error("The updated event dates conflict with another event");
       }
 
       fieldsToUpdate.push("start_date = ?", "end_date = ?");
@@ -991,7 +995,7 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
     }
 
     if (fieldsToUpdate.length === 0) {
-      throw new Error("No valid fields to update.");
+      throw new Error("No valid fields to update");
     }
 
     queryParams.push(id); // Add event ID to the end of the params
@@ -1001,10 +1005,10 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
     const changes = await runDbQuery(query, queryParams);
 
     if (changes === 0) {
-      throw new Error("No changes made to the event.");
+      throw new Error("No changes made to the event");
     }
 
-    res.json({ message: "Event updated successfully." });
+    res.json({ message: "Event updated successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1019,15 +1023,15 @@ app.delete('/api/events/:id', authenticateToken, async (req, res) => {
     const { isOwner, isOrganizer } = await checkEventAccess(id, userId);
 
     if (!isOwner && !isOrganizer) {
-      throw new Error("You do not have permission to delete this event.");
+      throw new Error("You do not have permission to delete this event");
     }
 
     const changes = await runDbQuery(`DELETE FROM Events WHERE event_id = ?`, [id]);
     if (changes === 0) {
-      throw new Error("Event not found.");
+      throw new Error("Event not found");
     }
 
-    res.json({ message: "Event deleted successfully." });
+    res.json({ message: "Event deleted successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1042,7 +1046,7 @@ app.get('/api/events/:event_id/invitations', authenticateToken, async (req, res)
 
   try {
     const event = await getDbRow(`SELECT organizer_id FROM Events WHERE event_id = ?`, [event_id]);
-    if (!event) throw new Error("Event not found.");
+    if (!event) throw new Error("Event not found");
 
     const isOrganizer = event.organizer_id === userId;
 
@@ -1056,7 +1060,7 @@ app.get('/api/events/:event_id/invitations', authenticateToken, async (req, res)
         `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ?`,
         [event_id, userId]
       );
-      if (!invitation) throw new Error("No invitation found for the current user.");
+      if (!invitation) throw new Error("No invitation found for the current user");
 
       res.json({ data: [invitation] });
     }
@@ -1073,7 +1077,7 @@ app.get('/api/invitations', authenticateToken, async (req, res) => {
     const invitations = await queryDb(`SELECT * FROM Invitations WHERE user_id = ?`, [userId]);
     res.json({ data: invitations });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving invitations." });
+    res.status(500).json({ error: "Error retrieving invitations" });
   }
 });
 
@@ -1093,7 +1097,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
       [event_id]
     );
 
-    if (!eventInfo) throw new Error("Event not found.");
+    if (!eventInfo) throw new Error("Event not found");
 
     const { organizer_id, owner_id, capacity, invite_only } = eventInfo;
 
@@ -1101,12 +1105,12 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
     if (!email) {
       // Self-invitation logic
       if (invite_only) {
-        throw new Error("Self-invitation is not allowed for invite-only events.");
+        throw new Error("Self-invitation is not allowed for invite-only events");
       }
 
       // Prevent the event organizer from inviting themselves
       if (organizer_id === userId) {
-        throw new Error("The event organizer cannot invite themselves.");
+        throw new Error("The event organizer cannot invite themselves");
       }
 
       // Check if the user is already invited
@@ -1116,7 +1120,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
       );
 
       if (existingInvitation) {
-        throw new Error("You are already invited to this event.");
+        throw new Error("You are already invited to this event");
       }
 
       // Check venue capacity for accepted invitations
@@ -1128,7 +1132,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
       );
 
       if (acceptedCount.accepted_count >= capacity) {
-        throw new Error("The venue has reached its maximum capacity.");
+        throw new Error("The venue has reached its maximum capacity");
       }
 
       // Add a self-invitation for the user
@@ -1138,7 +1142,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
       );
 
       return res.status(201).json({
-        message: "You have successfully joined the event.",
+        message: "You have successfully joined the event",
         invitation_id: selfInvitationId
       });
     }
@@ -1147,12 +1151,12 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
     const isOrganizerOrOwner = organizer_id === userId || owner_id === userId;
 
     if (!isOrganizerOrOwner) {
-      throw new Error("You do not have permission to send invitations for this event.");
+      throw new Error("You do not have permission to send invitations for this event");
     }
 
     // Prevent the event organizer from inviting themselves explicitly via email
     if (email === userEmail) {
-      throw new Error("The event organizer cannot invite themselves.");
+      throw new Error("The event organizer cannot invite themselves");
     }
 
     // Check if the venue capacity is exceeded
@@ -1164,7 +1168,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
     );
 
     if (status === "Accepted" && acceptedCount.accepted_count >= capacity) {
-      throw new Error("The venue has reached its maximum capacity.");
+      throw new Error("The venue has reached its maximum capacity");
     }
 
     // Check if the invitee already exists
@@ -1215,13 +1219,13 @@ app.put('/api/invitations/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    if (!invitation) throw new Error("Invitation not found.");
-    if (invitation.user_id !== userId) throw new Error("You do not have permission to update this invitation.");
+    if (!invitation) throw new Error("Invitation not found");
+    if (invitation.user_id !== userId) throw new Error("You do not have permission to update this invitation");
 
     if (status === "Accepted") {
       const today = new Date();
       if (new Date(invitation.start_date) < today) {
-        throw new Error("Cannot accept invitation. The event has already occurred.");
+        throw new Error("Cannot accept invitation. The event has already occurred");
       }
 
       const acceptedCount = await getDbRow(
@@ -1231,13 +1235,13 @@ app.put('/api/invitations/:id', authenticateToken, async (req, res) => {
         [invitation.event_id]
       );
       if (acceptedCount.accepted_count >= invitation.capacity) {
-        throw new Error("Cannot accept invitation. The venue has reached its maximum capacity.");
+        throw new Error("Cannot accept invitation. The venue has reached its maximum capacity");
       }
     }
 
     // Update invitation status
     const changes = await runDbQuery(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id]);
-    if (!changes) throw new Error("No changes made to the invitation.");
+    if (!changes) throw new Error("No changes made to the invitation");
 
     res.json({ message: "Invitation status updated successfully" });
   } catch (error) {
@@ -1254,13 +1258,13 @@ app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
     const { isRecipient, isOrganizer } = await verifyInvitationAccess(id, userId);
 
     if (!isRecipient && !isOrganizer) {
-      throw new Error("You do not have permission to delete this invitation.");
+      throw new Error("You do not have permission to delete this invitation");
     }
 
     const changes = await runDbQuery(`DELETE FROM Invitations WHERE invitation_id = ?`, [id]);
-    if (!changes) throw new Error("Invitation not found.");
+    if (!changes) throw new Error("Invitation not found");
 
-    res.json({ message: "Invitation deleted successfully." });
+    res.json({ message: "Invitation deleted successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1288,7 +1292,7 @@ app.get('/api/users/me/invites', authenticateToken, async (req, res) => {
 
     res.json({ data: invites });
   } catch (error) {
-    res.status(500).json({ error: "Error fetching invitations." });
+    res.status(500).json({ error: "Error fetching invitations" });
   }
 });
 
@@ -1306,7 +1310,7 @@ app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res
       [event_id, user_id]
     );
 
-    res.status(200).json({ message: "Invitation accepted successfully." });
+    res.status(200).json({ message: "Invitation accepted successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1334,7 +1338,7 @@ app.get('/api/users/me/accepted-invites', authenticateToken, async (req, res) =>
 
     res.json({ data: events });
   } catch (error) {
-    res.status(500).json({ error: "Error fetching accepted invites." });
+    res.status(500).json({ error: "Error fetching accepted invites" });
   }
 });
 
@@ -1346,7 +1350,7 @@ app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => 
 
   try {
     if (!email) {
-      throw new Error("Email is required to send an invitation.");
+      throw new Error("Email is required to send an invitation");
     }
 
     // Validate email format
@@ -1357,14 +1361,14 @@ app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => 
 
     // Check if the event exists and if the user is the organizer
     const event = await getDbRow(`SELECT * FROM Events WHERE event_id = ?`, [event_id]);
-    if (!event) throw new Error("Event not found.");
+    if (!event) throw new Error("Event not found");
     if (event.organizer_id !== organizer_id) {
-      throw new Error("Only the organizer can send invitations for this event.");
+      throw new Error("Only the organizer can send invitations for this event");
     }
 
     // Prevent organizer from inviting themselves
     if (email === req.user.email) {
-      throw new Error("You cannot invite yourself to your own event.");
+      throw new Error("You cannot invite yourself to your own event");
     }
 
     // Check if the email belongs to an existing user
@@ -1412,7 +1416,7 @@ app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => 
         [event_id, user.user_id]
       );
       if (existingInvitation) {
-        throw new Error("This user has already been invited to the event.");
+        throw new Error("This user has already been invited to the event");
       }
 
       await runDbQuery(
@@ -1444,13 +1448,13 @@ app.post('/api/users/complete-signup', async (req, res) => {
 
   try {
     if (!token || !name || !password) {
-      throw new Error("Token, name, and password are required.");
+      throw new Error("Token, name, and password are required");
     }
 
     // Retrieve the user associated with the token
     const tokenData = await getDbRow(`SELECT * FROM Tokens WHERE token = ?`, [token]);
     if (!tokenData) {
-      throw new Error("Invalid or expired token.");
+      throw new Error("Invalid or expired token");
     }
 
     // Update the user's profile
@@ -1463,7 +1467,7 @@ app.post('/api/users/complete-signup', async (req, res) => {
     // Remove the token after successful registration
     await runDbQuery(`DELETE FROM Tokens WHERE token = ?`, [token]);
 
-    res.json({ message: "Signup completed successfully." });
+    res.json({ message: "Signup completed successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -1541,13 +1545,13 @@ app.post('/api/notifications/readall', authenticateToken, async (req, res) => {
     );
 
     if (changes === 0) {
-      return res.status(200).json({ message: "No unread notifications to update." });
+      return res.status(200).json({ message: "No unread notifications to update" });
     }
 
-    res.json({ message: "All notifications marked as read." });
+    res.json({ message: "All notifications marked as read" });
   } catch (error) {
     console.error("Error marking notifications as read:", error.message);
-    res.status(500).json({ error: "An error occurred while marking notifications as read." });
+    res.status(500).json({ error: "An error occurred while marking notifications as read" });
   }
 });
 
@@ -1579,83 +1583,6 @@ app.delete('/api/notifications/:id', authenticateToken, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-
-// --- USERS ENDPOINTS --- ✅
-
-// // Register a new user
-// app.post('/api/register', async (req, res) => {
-//   const { name, email, password } = req.body;
-
-//   try {
-//     // Validate input
-//     validateRegistrationInput({ name, email, password });
-
-//     // Check if email already exists
-//     const existingUser = await getDbRow(`SELECT email FROM Users WHERE email = ?`, [email]);
-//     if (existingUser) {
-//       throw new Error("Email already registered. Please use a different email.");
-//     }
-
-//     // Hash the password
-//     const hashedPassword = await hashPassword(password);
-
-//     // Insert user into the database
-//     const userId = await runDbQuery(
-//       `INSERT INTO Users (name, email, password) VALUES (?, ?, ?)`,
-//       [name, email, hashedPassword]
-//     );
-
-//     res.status(201).json({ message: "User registered successfully", user_id: userId });
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// // Login
-// app.post('/api/login', async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     const user = await getDbRow('SELECT * FROM Users WHERE email = ?', [email]);
-//     if (!user || !(await bcrypt.compare(password, user.password))) {
-//       throw new Error('Invalid email or password.');
-//     }
-
-//     // Generate JWT token
-//     const token = jwt.sign({ user_id: user.user_id, email: user.email }, secretKey, { expiresIn: '1h' });
-
-//     // Set the JWT as an HTTP-only cookie
-//     res.cookie('token', token, {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === 'production',
-//       sameSite: 'Strict',
-//       maxAge: 3600000, // 1 hour
-//     });
-
-//     // Also return the token in the response body (for Postman)
-//     res.json({ token });
-//   } catch (error) {
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
-// // Logout (clear cookie)
-// app.post('/api/logout', authenticateToken, (req, res) => {
-//   try {
-//     // Clear the authentication token cookie
-//     res.clearCookie("token", {
-//       httpOnly: true,
-//       secure: process.env.NODE_ENV === "production", // Ensures HTTPS in production
-//       sameSite: "Strict" // Prevents CSRF attacks
-//     });
-
-//     // Send a success response
-//     res.status(200).json({ message: "Logged out successfully" });
-//   } catch (error) {
-//     // Catch unexpected errors
-//     res.status(500).json({ error: "An error occurred during logout" });
-//   }
-// });
 
 // Get user auth status
 app.get('/api/auth/session', (req, res) => {
@@ -1708,7 +1635,7 @@ app.put('/api/users/me', authenticateToken, async (req, res) => {
     }
 
     if (!/^[a-zA-Z\s]+$/.test(name)) {
-      throw new Error("Name can only contain alphabetic characters and spaces.");
+      throw new Error("Name can only contain alphabetic characters and spaces");
     }
 
     // Update the user profile
@@ -1724,7 +1651,7 @@ app.put('/api/users/me', authenticateToken, async (req, res) => {
     res.json({ message: "User profile updated successfully" });
   } catch (error) {
     if (error.code === "SQLITE_CONSTRAINT") {
-      res.status(400).json({ error: "Email already in use. Please choose a different email." });
+      res.status(400).json({ error: "Email already in use. Please choose a different email" });
     } else {
       res.status(400).json({ error: error.message });
     }
@@ -1811,7 +1738,7 @@ app.get('/api/venues', async (req, res) => {
     `);
     res.json({ data: venues });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving venues." });
+    res.status(500).json({ error: "Error retrieving venues" });
   }
 });
 
@@ -1822,7 +1749,7 @@ app.get('/api/venues/:id', async (req, res) => {
   try {
     const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ?`, [id]);
     if (!venue) {
-      throw new Error("Venue not found.");
+      throw new Error("Venue not found");
     }
 
     res.json(venue);
@@ -1837,8 +1764,18 @@ app.post('/api/venues', authenticateToken, async (req, res) => {
   const owner_id = req.user.user_id;
 
   try {
-    validateVenueFields({ name, location, description, capacity, price });
+    validateFields({ name, location, description, capacity, price }, {
+      name: { required: true, type: 'string' },
+      location: { required: true, type: 'string' },
+      description: { required: true, type: 'string' },
+      capacity: { required: true, type: 'number' },
+    });
 
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+
+  try {
     const venueId = await runDbQuery(
       `INSERT INTO Venues (owner_id, name, location, description, capacity, price) VALUES (?, ?, ?, ?, ?, ?)`,
       [owner_id, name, location, description, capacity, price]
@@ -1858,24 +1795,24 @@ app.put('/api/venues/:id', authenticateToken, async (req, res) => {
 
   try {
     if (!name || !location) {
-      throw new Error("Both name and location are required.");
+      throw new Error("Both name and location are required");
     }
 
     // Optional fields validation
     if (capacity !== undefined && (!Number.isInteger(capacity) || capacity <= 0)) {
-      throw new Error("Capacity must be a positive integer.");
+      throw new Error("Capacity must be a positive integer");
     }
     if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
-      throw new Error("Price must be a positive number.");
+      throw new Error("Price must be a positive number");
     }
 
     // Check venue ownership
     const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [id]);
     if (!venue) {
-      throw new Error("Venue not found.");
+      throw new Error("Venue not found");
     }
     if (venue.owner_id !== userId) {
-      throw new Error("You do not have permission to update this venue.");
+      throw new Error("You do not have permission to update this venue");
     }
 
     const changes = await runDbQuery(
@@ -1884,7 +1821,7 @@ app.put('/api/venues/:id', authenticateToken, async (req, res) => {
     );
 
     if (changes === 0) {
-      throw new Error("No changes made to the venue.");
+      throw new Error("No changes made to the venue");
     }
 
     res.json({ message: "Venue updated successfully" });
@@ -1902,12 +1839,12 @@ app.delete('/api/venues/:id', authenticateToken, async (req, res) => {
     // Check venue ownership
     const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [id, userId]);
     if (!venue) {
-      throw new Error("Venue not found or unauthorized to delete.");
+      throw new Error("Venue not found or unauthorized to delete");
     }
 
     const changes = await runDbQuery(`DELETE FROM Venues WHERE venue_id = ?`, [id]);
     if (changes === 0) {
-      throw new Error("Venue not found.");
+      throw new Error("Venue not found");
     }
 
     res.json({ message: "Venue deleted successfully" });
@@ -1937,7 +1874,7 @@ app.get('/api/users/me/venues', authenticateToken, async (req, res) => {
 
     res.json({ data: venues });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving your venues." });
+    res.status(500).json({ error: "Error retrieving your venues" });
   }
 });
 
@@ -1954,12 +1891,12 @@ app.get('/api/venues/:venue_id/images', async (req, res) => {
     );
 
     if (!images || images.length === 0) {
-      return res.status(404).json({ error: "No images found for this venue." });
+      return res.status(404).json({ error: "No images found for this venue" });
     }
 
     res.status(200).json({ images: images.map((image) => image.image_url) });
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch images for the venue." });
+    res.status(500).json({ error: "Failed to fetch images for the venue" });
   }
 });
 
@@ -1972,13 +1909,13 @@ app.post('/api/venues/:venue_id/images', authenticateToken, upload.array('images
   try {
     // Validate the request payload
     if (!files || files.length === 0) {
-      throw new Error("At least one image is required.");
+      throw new Error("At least one image is required");
     }
 
     // Check if the venue exists and is owned by the user
     const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ? AND owner_id = ?`, [venue_id, user_id]);
     if (!venue) {
-      throw new Error("Venue not found or unauthorized to add images.");
+      throw new Error("Venue not found or unauthorized to add images");
     }
 
     // Insert each image into the database
@@ -1991,7 +1928,7 @@ app.post('/api/venues/:venue_id/images', authenticateToken, upload.array('images
     await Promise.all(insertPromises);
 
     res.status(201).json({
-      message: "Images uploaded successfully.",
+      message: "Images uploaded successfully",
       images: files.map((file) => `/uploads/${file.filename}`),
     });
   } catch (error) {
@@ -2019,7 +1956,7 @@ app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
   try {
     // Validate input
     if (!venue_id || !start_date || !end_date) {
-      throw new Error("Venue ID, start_date, and end_date are required.");
+      throw new Error("Venue ID, start_date, and end_date are required");
     }
 
     // Check date format
@@ -2033,8 +1970,8 @@ app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
     // Check for conflicts with events
     const events = await queryDb(`SELECT start_date, end_date FROM Events WHERE venue_id = ?`, [venue_id]);
 
-    if (checkOverlap(start, end, events)) {
-      throw new Error("Cannot book venue due to a scheduled event conflict.");
+    if (checkDateOverlap(start, end, events)) {
+      throw new Error("Cannot book venue due to a scheduled event conflict");
     }
 
     // Check for available dates
@@ -2052,7 +1989,7 @@ app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
     const existingRentals = await queryDb(`SELECT start_date, end_date FROM Venue_Rentals WHERE venue_id = ?`, [venue_id]);
 
     if (checkOverlap(start, end, existingRentals)) {
-      throw new Error("The selected date range overlaps with an existing rental.");
+      throw new Error("The selected date range overlaps with an existing rental");
     }
 
     // Insert rental into the database
@@ -2079,12 +2016,12 @@ app.put('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
 
     // Check if the rental belongs to the user
     const rental = await getDbRow(`SELECT venue_id FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId]);
-    if (!rental) throw new Error("Rental not found or you don't have permission to edit this rental.");
+    if (!rental) throw new Error("Rental not found or you don't have permission to edit this rental");
 
     // Check for event conflicts
     const events = await queryDb(`SELECT start_date, end_date FROM Events WHERE venue_id = ?`, [rental.venue_id]);
     if (checkOverlap(start, end, events)) {
-      throw new Error("Cannot update rental due to a scheduled event conflict.");
+      throw new Error("Cannot update rental due to a scheduled event conflict");
     }
 
     // Check for overlapping rentals
@@ -2093,7 +2030,7 @@ app.put('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
       [rental.venue_id, id]
     );
     if (checkOverlap(start, end, existingRentals)) {
-      throw new Error("The selected date range overlaps with an existing rental.");
+      throw new Error("The selected date range overlaps with an existing rental");
     }
 
     // Update the rental
@@ -2102,8 +2039,8 @@ app.put('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
       [start_date, end_date, id]
     );
 
-    if (changes === 0) throw new Error("No changes made to the rental.");
-    res.json({ message: "Rental updated successfully." });
+    if (changes === 0) throw new Error("No changes made to the rental");
+    res.json({ message: "Rental updated successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -2117,11 +2054,11 @@ app.delete('/api/venue_rentals/:id', authenticateToken, async (req, res) => {
   try {
     // Check if the rental belongs to the user
     const rental = await getDbRow(`SELECT * FROM Venue_Rentals WHERE rental_id = ? AND user_id = ?`, [id, userId]);
-    if (!rental) throw new Error("Rental not found or unauthorized to delete.");
+    if (!rental) throw new Error("Rental not found or unauthorized to delete");
 
     // Delete the rental
     const changes = await runDbQuery(`DELETE FROM Venue_Rentals WHERE rental_id = ?`, [id]);
-    if (changes === 0) throw new Error("Rental not found.");
+    if (changes === 0) throw new Error("Rental not found");
 
     res.json({ message: "Rental deleted successfully" });
   } catch (error) {
@@ -2167,7 +2104,7 @@ app.get('/api/available_dates', async (req, res) => {
     const dates = await queryDb('SELECT * FROM Available_Dates');
     res.json({ data: dates });
   } catch (error) {
-    res.status(500).json({ error: "Error retrieving available dates." });
+    res.status(500).json({ error: "Error retrieving available dates" });
   }
 });
 
@@ -2178,7 +2115,7 @@ app.get('/api/venues/:id/available_dates', async (req, res) => {
   try {
     // Check if the venue exists
     const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ?`, [id]);
-    if (!venue) throw new Error("Venue not found.");
+    if (!venue) throw new Error("Venue not found");
 
     // Fetch all available dates for the venue
     const availableDates = await queryDb(`SELECT * FROM Available_Dates WHERE venue_id = ?`, [id]);
@@ -2231,15 +2168,15 @@ app.post('/api/available_dates', authenticateToken, async (req, res) => {
 
   try {
     if (!venue_id || !available_date) {
-      throw new Error("Both venue_id and available_date are required.");
+      throw new Error("Both venue_id and available_date are required");
     }
 
     validateDateFormat(available_date);
 
     // Verify ownership of the venue
     const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
-    if (!venue) throw new Error("Venue not found.");
-    if (venue.owner_id !== userId) throw new Error("You do not have permission to modify available dates for this venue.");
+    if (!venue) throw new Error("Venue not found");
+    if (venue.owner_id !== userId) throw new Error("You do not have permission to modify available dates for this venue");
 
     // Insert the new available date
     const availability_id = await runDbQuery(
@@ -2261,15 +2198,15 @@ app.put('/api/available_dates/:id', authenticateToken, async (req, res) => {
 
   try {
     if (!venue_id || !available_date) {
-      throw new Error("Both venue_id and available_date are required.");
+      throw new Error("Both venue_id and available_date are required");
     }
 
     validateDateFormat(available_date);
 
     // Check venue ownership
     const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
-    if (!venue) throw new Error("Venue not found.");
-    if (venue.owner_id !== userId) throw new Error("You do not have permission to update this availability date.");
+    if (!venue) throw new Error("Venue not found");
+    if (venue.owner_id !== userId) throw new Error("You do not have permission to update this availability date");
 
     // Update the availability date
     const changes = await runDbQuery(
@@ -2277,8 +2214,8 @@ app.put('/api/available_dates/:id', authenticateToken, async (req, res) => {
       [venue_id, available_date, id]
     );
 
-    if (changes === 0) throw new Error("Availability date not found or no changes made.");
-    res.json({ message: "Availability date updated successfully." });
+    if (changes === 0) throw new Error("Availability date not found or no changes made");
+    res.json({ message: "Availability date updated successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -2299,14 +2236,14 @@ app.delete('/api/available_dates/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    if (!row) throw new Error("Availability date not found.");
-    if (row.owner_id !== userId) throw new Error("You do not have permission to delete this availability date.");
+    if (!row) throw new Error("Availability date not found");
+    if (row.owner_id !== userId) throw new Error("You do not have permission to delete this availability date");
 
     // Delete the availability date
     const changes = await runDbQuery(`DELETE FROM Available_Dates WHERE availability_id = ?`, [id]);
 
-    if (changes === 0) throw new Error("Availability date not found.");
-    res.json({ message: "Availability date deleted successfully." });
+    if (changes === 0) throw new Error("Availability date not found");
+    res.json({ message: "Availability date deleted successfully" });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

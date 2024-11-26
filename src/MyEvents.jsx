@@ -26,7 +26,7 @@ function MyEvents() {
 				setEvents(personalEvents);
 
 				// Fetch invited events
-				const invitesResponse = await fetch("http://localhost:5001/api/users/me/invites", {
+				const invitesResponse = await fetch("http://localhost:5001/api/users/me/invited-events", {
 					credentials: "include",
 				});
 				if (!invitesResponse.ok) {
@@ -36,7 +36,7 @@ function MyEvents() {
 				setInvitedEvents(inviteEvents);
 
 				// Fetch accepted invites
-				const acceptedResponse = await fetch("http://localhost:5001/api/users/me/accepted-invites", {
+				const acceptedResponse = await fetch("http://localhost:5001/api/users/me/accepted-events", {
 					credentials: "include",
 				});
 				if (!acceptedResponse.ok) {
