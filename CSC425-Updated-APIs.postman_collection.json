@@ -163,11 +163,10 @@
 									"    pm.expect(response).to.have.property(\"message\", \"Logged out successfully\");",
 									"});",
 									"",
-									"// Check that both cookies have been removed",
-									"pm.test(\"Both cookies have been removed\", function () {",
+									"// Check that all cookies have been removed",
+									"pm.test(\"All cookies have been removed\", function () {",
 									"    const cookies = pm.cookies.toObject();",
 									"    pm.expect(cookies).to.not.have.property(\"accessToken\");",
-									"    pm.expect(cookies).to.not.have.property(\"refreshToken\");",
 									"});"
 								],
 								"type": "text/javascript",
@@ -223,7 +222,7 @@
 									"});",
 									"",
 									"// Check that the cookies include refreshToken and accessToken",
-									"pm.test(\"Cookies include refreshToken and accessToken\", function () {",
+									"pm.test(\"Cookies include accessToken\", function () {",
 									"    const cookies = pm.cookies;",
 									"    pm.expect(cookies.has('accessToken')).to.be.true;",
 									"});"
@@ -948,7 +947,24 @@
 							"listen": "test",
 							"script": {
 								"exec": [
-									""
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 200 (Success)",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains the success message",
+									"pm.test(\"Response contains a success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Logged out successfully\");",
+									"});",
+									"",
+									"// Check that all cookies have been removed",
+									"pm.test(\"All cookies have been removed\", function () {",
+									"    const cookies = pm.cookies.toObject();",
+									"    pm.expect(cookies).to.not.have.property(\"accessToken\");",
+									"});"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -1039,6 +1055,60 @@
 					"response": []
 				},
 				{
+					"name": "Login in event organizer 1",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Check that the response status is 200 OK",
+									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
+									"",
+									"// Parse the response JSON",
+									"const jsonData = pm.response.json();",
+									"",
+									"// Check for the login success message",
+									"pm.test(\"Login successful message is correct\", () => {",
+									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
+									"});",
+									"",
+									"// Check that the token cookie is set",
+									"pm.test(\"Token cookie is present\", () => {",
+									"    const tokenCookie = pm.cookies.get(\"accessToken\");",
+									"    pm.expect(tokenCookie).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get all users events",
 					"event": [
 						{
@@ -1088,60 +1158,6 @@
 								"users",
 								"me",
 								"events"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Login in event organizer 1",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"// Check that the response status is 200 OK",
-									"pm.test(\"Status code is 200\", () => pm.response.to.have.status(200));",
-									"",
-									"// Parse the response JSON",
-									"const jsonData = pm.response.json();",
-									"",
-									"// Check for the login success message",
-									"pm.test(\"Login successful message is correct\", () => {",
-									"    pm.expect(jsonData).to.have.property(\"message\", \"Login successful\");",
-									"});",
-									"",
-									"// Check that the token cookie is set",
-									"pm.test(\"Token cookie is present\", () => {",
-									"    const tokenCookie = pm.cookies.get(\"accessToken\");",
-									"    pm.expect(tokenCookie).to.not.be.undefined;",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{base_url}}/api/login",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"login"
 							]
 						}
 					},
@@ -1206,6 +1222,62 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Logout of event organizer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// Parse the JSON response",
+									"const response = pm.response.json();",
+									"",
+									"// Check that the response status code is 200 (Success)",
+									"pm.test(\"Response status is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"// Check that the response contains the success message",
+									"pm.test(\"Response contains a success message\", function () {",
+									"    pm.expect(response).to.have.property(\"message\", \"Logged out successfully\");",
+									"});",
+									"",
+									"// Check that all cookies have been removed",
+									"pm.test(\"All cookies have been removed\", function () {",
+									"    const cookies = pm.cookies.toObject();",
+									"    pm.expect(cookies).to.not.have.property(\"accessToken\");",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"frank.green@example.com\",\n    \"password\": \"greenpass789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"logout"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		}
@@ -1235,7 +1307,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "",
+			"value": "http://localhost:5001",
 			"type": "string"
 		},
 		{
