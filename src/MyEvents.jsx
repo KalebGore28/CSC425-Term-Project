@@ -94,6 +94,26 @@ function MyEvents() {
 		}
 	};
 
+	// Handle declining an invitation
+	const handleDeclineInvite = async (eventId) => {
+		try {
+			const response = await fetch(`http://localhost:5001/api/invitations/${eventId}/decline`, {
+				method: "POST",
+				credentials: "include",
+			});
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to decline the invitation.");
+			}
+			alert("Invitation declined successfully.");
+			// Remove the event from the invited list
+			setInvitedEvents((prev) => prev.filter((event) => event.event_id !== eventId));
+		} catch (err) {
+			alert(err.message);
+		}
+	};
+
+
 	if (isLoading) return <p>Loading your events...</p>;
 	if (error) return <p>Error: {error}</p>;
 
@@ -177,12 +197,20 @@ function MyEvents() {
 									</>
 								)}
 								{filter === "Invited Events" && (
-									<button
-										onClick={() => handleAcceptInvite(event.event_id)}
-										className="accept-button"
-									>
-										Accept
-									</button>
+									<>
+										<button
+											onClick={() => handleAcceptInvite(event.event_id)}
+											className="accept-button"
+										>
+											Accept
+										</button>
+										<button
+											onClick={() => handleDeclineInvite(event.event_id)}
+											className="decline-button"
+										>
+											Decline
+										</button>
+									</>
 								)}
 								{filter === "Accepted Events" && (
 									<button

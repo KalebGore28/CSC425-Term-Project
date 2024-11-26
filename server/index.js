@@ -231,6 +231,7 @@ const verifyInvitationAccess = async (invitationId, userId) => {
 };
 
 // --- API MIDDLEWARE ---
+// Middleware for validating input fields - ✅
 const validateInput = (schema) => (req, res, next) => {
   try {
     validateFields(req.body, schema);
@@ -240,7 +241,7 @@ const validateInput = (schema) => (req, res, next) => {
   }
 };
 
-// Middleware for verifying event access
+// Middleware for verifying event access - ✅
 const verifyEventAccessMiddleware = async (req, res, next) => {
   const { event_id } = req.params;
   const user_id = req.user.user_id;
@@ -255,7 +256,7 @@ const verifyEventAccessMiddleware = async (req, res, next) => {
   }
 };
 
-// Middleware to check if a post exists
+// Middleware to check if a post exists - ✅
 const checkPostExistsMiddleware = async (req, res, next) => {
   const { post_id } = req.params;
 
@@ -268,6 +269,38 @@ const checkPostExistsMiddleware = async (req, res, next) => {
     next(); // Proceed to the next middleware or route handler
   } catch (error) {
     return res.status(500).json({ error: "An error occurred while checking the post." });
+  }
+};
+
+// Middleware to check if a user exists
+const checkUserExistsMiddleware = async (req, res, next) => {
+  const { user_id } = req.params;
+
+  try {
+    const user = await getDbRow(`SELECT * FROM Users WHERE user_id = ?`, [user_id]);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    req.user = user; // Attach the user to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the user." });
+  }
+};
+
+// Middleware to check if an event exists
+const checkEventExistsMiddleware = async (req, res, next) => {
+  const { event_id } = req.params;
+
+  try {
+    const event = await getDbRow(`SELECT * FROM Events WHERE event_id = ?`, [event_id]);
+    if (!event) {
+      return res.status(404).json({ error: "Event not found" });
+    }
+    req.event = event; // Attach the event to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the event." });
   }
 };
 
@@ -732,39 +765,50 @@ app.get('/api/users/me/accepted-events', authenticateToken, async (req, res) => 
   }
 });
 
-// Get event details by ID //TODO: Add invite-only check
-app.get('/api/events/:id', async (req, res) => {
-  const { id } = req.params;
+// Get event details by ID - ✅
+app.get(
+  '/api/events/:event_id',
+  checkEventExistsMiddleware, // Check if the event exists
+  async (req, res) => {
+    const event = req.event;
 
-  try {
-    const event = await getDbRow(
-      `SELECT 
-         Events.event_id,
-         Events.name, 
-         Events.description, 
-         Events.start_date, 
-         Events.end_date,
-         Events.invite_only,
-         Events.organizer_id, 
-         Venues.name AS venue_name, 
-         Venues.location AS venue_location, 
-         Users.name AS organizer_name
-       FROM Events
-       JOIN Venues ON Events.venue_id = Venues.venue_id
-       JOIN Users ON Events.organizer_id = Users.user_id
-       WHERE Events.event_id = ?`,
-      [id]
-    );
+    if (event.invite_only) {
+      // Need to get user_id from token
+      const token = req.cookies.accessToken;
+      const decoded = jwt.verify(token, secretKey);
+      const user_id = decoded.user_id;
 
-    if (!event) {
-      throw new Error("Event not found");
+      // Check if user is invited to the event
+      const invitation = await getDbRow(
+        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
+        [event.event_id, user_id]
+      );
+
+      if (!invitation) {
+        return res.status(403).json({ error: "You are not invited to this event" });
+      }
     }
 
-    res.json(event);
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+    try {
+      // Fetch venue details to merge with event details. we need to get the venue name, location, and organizer name
+      const venueDetails = await getDbRow(
+        `SELECT
+          V.name AS venue_name,
+          V.location AS venue_location,
+          U.name AS organizer_name
+          FROM Venues V
+          JOIN Events E ON V.venue_id = E.venue_id
+          JOIN Users U ON E.organizer_id = U.user_id
+          WHERE E.event_id = ?`,
+        [event.event_id]
+      );
+
+      return res.json({ ...event, ...venueDetails });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
   }
-});
+);
 
 // Get all attendees for an event - ✅
 app.get(
@@ -809,7 +853,7 @@ app.get(
   }
 );
 
-// Remove an attendee from the event (organizers only)
+// Remove an attendee from the event (organizers only) - ✅
 app.delete(
   '/api/events/:event_id/attendees/:user_id',
   authenticateToken,
@@ -835,22 +879,6 @@ app.delete(
     }
   }
 );
-
-// Get all user events
-app.get('/api/users/:user_id/events', authenticateToken, async (req, res) => {
-  const { user_id } = req.params;
-
-  try {
-    if (user_id !== req.user.user_id) {
-      throw new Error("You do not have permission to view events for this user");
-    }
-
-    const events = await queryDb('SELECT * FROM Events WHERE organizer_id = ?', [user_id]);
-    res.json({ data: events });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
 
 // Create a new event
 app.post('/api/events', authenticateToken, async (req, res) => {
@@ -1040,46 +1068,23 @@ app.delete('/api/events/:id', authenticateToken, async (req, res) => {
 // --- INVITATIONS ENDPOINTS --- ✅
 
 // Get all invitations for an event
-app.get('/api/events/:event_id/invitations', authenticateToken, async (req, res) => {
-  const { event_id } = req.params;
-  const userId = req.user.user_id;
+app.get('/api/events/:event_id/invitations',
+  authenticateToken,
+  verifyEventAccessMiddleware, // Verify event access
+  async (req, res) => {
+    const { event_id } = req.params;
+    const userId = req.user.user_id;
 
-  try {
-    const event = await getDbRow(`SELECT organizer_id FROM Events WHERE event_id = ?`, [event_id]);
-    if (!event) throw new Error("Event not found");
+    try {
+      const isOrganizer = event.organizer_id === userId;
 
-    const isOrganizer = event.organizer_id === userId;
-
-    if (isOrganizer) {
       // Organizer can view all invitations for the event
       const invitations = await queryDb(`SELECT * FROM Invitations WHERE event_id = ?`, [event_id]);
       return res.json({ data: invitations });
-    } else {
-      // Non-organizers can only view their own invitation
-      const invitation = await getDbRow(
-        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ?`,
-        [event_id, userId]
-      );
-      if (!invitation) throw new Error("No invitation found for the current user");
-
-      res.json({ data: [invitation] });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
     }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Get all invitations for the authenticated user
-app.get('/api/invitations', authenticateToken, async (req, res) => {
-  const userId = req.user.user_id;
-
-  try {
-    const invitations = await queryDb(`SELECT * FROM Invitations WHERE user_id = ?`, [userId]);
-    res.json({ data: invitations });
-  } catch (error) {
-    res.status(500).json({ error: "Error retrieving invitations" });
-  }
-});
+  });
 
 // Create an invitation (accessible by event organizers or users inviting themselves if not invite-only)
 app.post('/api/invitations', authenticateToken, async (req, res) => {
@@ -1203,100 +1208,7 @@ app.post('/api/invitations', authenticateToken, async (req, res) => {
   }
 });
 
-// Update an invitation status
-app.put('/api/invitations/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const userId = req.user.user_id;
-
-  try {
-    const invitation = await getDbRow(
-      `SELECT I.user_id, E.start_date, V.capacity 
-       FROM Invitations AS I 
-       JOIN Events AS E ON I.event_id = E.event_id 
-       JOIN Venues AS V ON E.venue_id = V.venue_id 
-       WHERE I.invitation_id = ?`,
-      [id]
-    );
-
-    if (!invitation) throw new Error("Invitation not found");
-    if (invitation.user_id !== userId) throw new Error("You do not have permission to update this invitation");
-
-    if (status === "Accepted") {
-      const today = new Date();
-      if (new Date(invitation.start_date) < today) {
-        throw new Error("Cannot accept invitation. The event has already occurred");
-      }
-
-      const acceptedCount = await getDbRow(
-        `SELECT COUNT(*) AS accepted_count 
-         FROM Invitations 
-         WHERE event_id = ? AND status = 'Accepted'`,
-        [invitation.event_id]
-      );
-      if (acceptedCount.accepted_count >= invitation.capacity) {
-        throw new Error("Cannot accept invitation. The venue has reached its maximum capacity");
-      }
-    }
-
-    // Update invitation status
-    const changes = await runDbQuery(`UPDATE Invitations SET status = ? WHERE invitation_id = ?`, [status, id]);
-    if (!changes) throw new Error("No changes made to the invitation");
-
-    res.json({ message: "Invitation status updated successfully" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Delete an invitation
-app.delete('/api/invitations/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.user_id;
-
-  try {
-    const { isRecipient, isOrganizer } = await verifyInvitationAccess(id, userId);
-
-    if (!isRecipient && !isOrganizer) {
-      throw new Error("You do not have permission to delete this invitation");
-    }
-
-    const changes = await runDbQuery(`DELETE FROM Invitations WHERE invitation_id = ?`, [id]);
-    if (!changes) throw new Error("Invitation not found");
-
-    res.json({ message: "Invitation deleted successfully" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
-
-// Get all invitations for the authenticated user - ✅
-app.get('/api/users/me/invites', authenticateToken, async (req, res) => {
-  const userId = req.user.user_id;
-
-  try {
-    const invites = await queryDb(`
-      SELECT 
-        E.event_id, 
-        E.name AS event_name, 
-        E.start_date, 
-        E.end_date, 
-        V.name AS venue_name, 
-        V.location AS venue_location 
-      FROM Invitations I
-      JOIN Events E ON I.event_id = E.event_id
-      JOIN Venues V ON E.venue_id = V.venue_id
-      WHERE I.user_id = ? AND I.status = 'Sent'`,
-      [userId]
-    );
-
-    res.json({ data: invites });
-  } catch (error) {
-    res.status(500).json({ error: "Error fetching invitations" });
-  }
-});
-
-// Accept an invitation - ✅
+// Accept an invitation
 app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res) => {
   const { event_id } = req.params;
   const user_id = req.user.user_id;
@@ -1310,39 +1222,34 @@ app.post('/api/invitations/:event_id/accept', authenticateToken, async (req, res
       [event_id, user_id]
     );
 
-    res.status(200).json({ message: "Invitation accepted successfully" });
+    return res.status(200).json({ message: "Invitation accepted successfully" });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 });
 
-// Fetch accepted invites for the authenticated user - ✅
-app.get('/api/users/me/accepted-invites', authenticateToken, async (req, res) => {
+// Decline an invitation
+app.post('/api/invitations/:event_id/decline', authenticateToken, async (req, res) => {
+  const { event_id } = req.params;
   const user_id = req.user.user_id;
 
   try {
-    const events = await queryDb(
-      `SELECT 
-         E.event_id, 
-         E.name AS event_name, 
-         E.start_date, 
-         E.end_date, 
-         V.name AS venue_name, 
-         V.location AS venue_location 
-       FROM Invitations I
-       JOIN Events E ON I.event_id = E.event_id
-       JOIN Venues V ON E.venue_id = V.venue_id
-       WHERE I.user_id = ? AND I.status = 'Accepted'`,
-      [user_id]
+    // Update the invitation status to Declined
+    await runDbQuery(
+      `UPDATE Invitations 
+       SET status = 'Declined' 
+       WHERE event_id = ? AND user_id = ? AND status = 'Sent'`,
+      [event_id, user_id]
     );
 
-    res.json({ data: events });
-  } catch (error) {
-    res.status(500).json({ error: "Error fetching accepted invites" });
+    return res.status(200).json({ message: "Invitation declined successfully" });
+  }
+  catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 });
 
-// Send an invitation to a user for an event - ✅
+// Send an invitation to a user for an event
 app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => {
   const { event_id } = req.params;
   const { email } = req.body;
@@ -1442,7 +1349,7 @@ app.post('/api/events/:event_id/invite', authenticateToken, async (req, res) => 
   }
 });
 
-// Complete user registration after receiving an invitation - ✅
+// Complete user registration after receiving an invitation
 app.post('/api/users/complete-signup', async (req, res) => {
   const { token, name, password } = req.body;
 
