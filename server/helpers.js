@@ -1,5 +1,6 @@
 const { parseISO, format, isBefore, isAfter, isEqual, isValid } = require("date-fns");
 const { rules } = require("eslint-plugin-react-refresh");
+const { verify } = require("jsonwebtoken");
 
 // --- VALIDATOR FUNCTIONS ---
 /**
@@ -7,7 +8,6 @@ const { rules } = require("eslint-plugin-react-refresh");
  * 
  * @param {string} start_date - Start date of the range in YYYY-MM-DD format.
  * @param {string} end_date - End date of the range in YYYY-MM-DD format.
- * @returns {Object} - Formatted start and end dates in YYYY-MM-DD format.
  * @throws Will throw an error if the date range is invalid.
  */
 const validateDateRange = (start_date, end_date) => {
@@ -25,12 +25,6 @@ const validateDateRange = (start_date, end_date) => {
 	if (isAfter(start, end)) {
 		throw new Error("Start date cannot be after the end date.");
 	}
-
-	// Format dates to YYYY-MM-DD for consistent storage
-	return {
-		start: format(start, "yyyy-MM-dd"),
-		end: format(end, "yyyy-MM-dd"),
-	};
 };
 
 /**
@@ -39,10 +33,9 @@ const validateDateRange = (start_date, end_date) => {
  * @param {string} start_date - Start date of the new range in YYYY-MM-DD format.
  * @param {string} end_date - End date of the new range in YYYY-MM-DD format.
  * @param {Array} dateRanges - Array of existing date ranges, each with `start_date` and `end_date` in YYYY-MM-DD format.
- * @returns {boolean} - True if the new date range does not overlap with any existing range.
  * @throws Will throw an error if the new date range overlaps with any existing range.
  */
-const checkDateOverlap = (start_date, end_date, dateRanges) => {
+const validateDateOverlap = (start_date, end_date, dateRanges) => {
 	const newStart = parseISO(start_date);
 	const newEnd = parseISO(end_date);
 
@@ -71,8 +64,6 @@ const checkDateOverlap = (start_date, end_date, dateRanges) => {
 			throw new Error(`Date range overlaps with an existing range: ${range.start_date} to ${range.end_date}`);
 		}
 	}
-
-	return true; // No overlap
 };
 
 /**
@@ -151,7 +142,7 @@ const validateDateFormat = (date) => {
 
 module.exports = {
 	validateDateRange,
-	checkDateOverlap,
+	validateDateOverlap,
 	validateFields,
 	validateDateFormat,
 };

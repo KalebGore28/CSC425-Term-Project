@@ -18,7 +18,7 @@ const axios = require('axios');
 require('dotenv').config(); // Load environment variables
 
 // Import helper.js file
-const { validateDateRange, checkDateOverlap, validateFields, validateDateFormat } = require('./helpers');
+const { validateDateRange, validateDateOverlap, validateFields, validateDateFormat } = require('./helpers');
 
 const { eachDayOfInterval, parseISO, format, isBefore, isAfter, isEqual } = require('date-fns');
 
@@ -89,7 +89,7 @@ const startServer = () => {
 
 // Middleware to check for a valid JWT token
 const authenticateToken = (req, res, next) => {
-  const token = req.cookies.accessToken; // Use the correct cookie name
+  const token = req.cookies.accessToken;
   if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
@@ -243,12 +243,11 @@ const validateInput = (schema) => (req, res, next) => {
 
 // Middleware for verifying event access - ✅
 const verifyEventAccessMiddleware = async (req, res, next) => {
-  const { event_id } = req.params;
-  const user_id = req.user.user_id;
+  const event_id = req.params.event_id || req.body.event_id;
 
   try {
     // Perform access verification
-    const { isOrganizer } = await verifyEventAccess(event_id, user_id);
+    const { isOrganizer } = await verifyEventAccess(event_id, user.user_id);
     req.isOrganizer = isOrganizer;
     next(); // Proceed to the next middleware or route handler
   } catch (error) {
@@ -258,7 +257,7 @@ const verifyEventAccessMiddleware = async (req, res, next) => {
 
 // Middleware to check if a post exists - ✅
 const checkPostExistsMiddleware = async (req, res, next) => {
-  const { post_id } = req.params;
+  const post_id = req.params.post_id || req.body.post_id;
 
   try {
     const post = await getDbRow(`SELECT * FROM Community_Posts WHERE post_id = ?`, [post_id]);
@@ -272,25 +271,9 @@ const checkPostExistsMiddleware = async (req, res, next) => {
   }
 };
 
-// Middleware to check if a user exists
-const checkUserExistsMiddleware = async (req, res, next) => {
-  const { user_id } = req.params;
-
-  try {
-    const user = await getDbRow(`SELECT * FROM Users WHERE user_id = ?`, [user_id]);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    req.user = user; // Attach the user to the request object
-    next(); // Proceed to the next middleware or route handler
-  } catch (error) {
-    return res.status(500).json({ error: "An error occurred while checking the user." });
-  }
-};
-
 // Middleware to check if an event exists
 const checkEventExistsMiddleware = async (req, res, next) => {
-  const { event_id } = req.params;
+  const event_id = req.params.event_id || req.body.event_id;
 
   try {
     const event = await getDbRow(`SELECT * FROM Events WHERE event_id = ?`, [event_id]);
@@ -304,7 +287,57 @@ const checkEventExistsMiddleware = async (req, res, next) => {
   }
 };
 
+// Middleware to check if a venue exists
+const checkVenueExistsMiddleware = async (req, res, next) => {
+  const venue_id = req.params.venue_id || req.body.venue_id;
+
+  try {
+    const venue = await getDbRow(`SELECT * FROM Venues WHERE venue_id = ?`, [venue_id]);
+    if (!venue) {
+      return res.status(404).json({ error: "Venue not found" });
+    }
+    req.venue = venue; // Attach the venue to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the venue." });
+  }
+};
+
+// Middleware to check if a invitation exists
+const checkInvitationExistsMiddleware = async (req, res, next) => {
+  const { invitation_id } = req.params;
+
+  try {
+    const invitation = await getDbRow(`SELECT * FROM Invitations WHERE invitation_id = ?`, [invitation_id]);
+    if (!invitation) {
+      return res.status(404).json({ error: "Invitation not found" });
+    }
+    req.invitation = invitation; // Attach the invitation to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the invitation." });
+  }
+};
+
+// Middleware to check if a rental exists
+const checkRentalExistsMiddleware = async (req, res, next) => {
+  const { rental_id } = req.params;
+
+  try {
+    const rental = await getDbRow(`SELECT * FROM Rentals WHERE rental_id = ?`, [rental_id]);
+    if (!rental) {
+      return res.status(404).json({ error: "Rental not found" });
+    }
+    req.rental = rental; // Attach the rental to the request object
+    next(); // Proceed to the next middleware or route handler
+  } catch (error) {
+    return res.status(500).json({ error: "An error occurred while checking the rental." });
+  }
+};
+
+
 // --- AUTHENTICATION FUNCTIONS --- ✅
+
 // Register a new user
 app.post(
   '/api/register',
@@ -885,89 +918,115 @@ app.delete(
 );
 
 // Create a new event
-app.post('/api/events', authenticateToken, async (req, res) => {
-  const userId = req.user.user_id;
-  const { venue_id, name, description, start_date, end_date, invite_only = false } = req.body;
+app.post(
+  '/api/events',
+  authenticateToken,
+  validateInput({
+    venue_id: { required: true, type: 'number' },
+    name: { required: true, type: 'string' },
+    description: { required: true, type: 'string' },
+    start_date: { required: true, type: 'string' },
+    end_date: { required: true, type: 'string' },
+    invite_only: { required: false, type: 'boolean' },
+  }),
+  checkVenueExistsMiddleware,
 
-  try {
-    // Validate required fields
-    if (!venue_id || !name || !description || !start_date || !end_date) {
-      throw new Error("Venue ID, name, description, start_date, and end_date are required");
+  async (req, res) => {
+    const { venue_id, name, description, start_date, end_date, invite_only = true } = req.body;
+    const user = req.user;
+
+    try {
+      // Validate date range
+      validateDateRange(start_date, end_date);
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
     }
 
-    // Validate date range
-    const { start, end } = validateDateRange(start_date, end_date);
+    const isOwner = req.venue.owner_id === user.user_id;
+    try {
+      // Check if the user is the owner of the venue
 
-    // Check if the venue exists
-    const venue = await getDbRow(`SELECT owner_id FROM Venues WHERE venue_id = ?`, [venue_id]);
-    if (!venue) {
-      throw new Error("Venue not found");
-    }
-
-    const isOwner = venue.owner_id === userId;
-
-    if (isOwner) {
-      // Owner-specific validation: Check for date overlaps with other rentals
-      const rentals = await queryDb(
-        `SELECT start_date, end_date 
+      if (isOwner) {
+        // Owner-specific validation: Check for date overlaps with other rentals
+        const rentals = await queryDb(
+          `SELECT start_date, end_date 
          FROM Venue_Rentals 
          WHERE venue_id = ? AND user_id != ?`,
-        [venue_id, userId]
-      );
-
-      if (checkDateOverlap(start, end, rentals)) {
-        throw new Error("Event dates overlap with an existing rental by another user");
-      }
-
-      // Insert event for owners
-      await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [venue_id, userId, name, description, start, end, invite_only ? 1 : 0]
-      );
-    } else {
-      // Renter-specific validation: Check if the user has a valid rental
-      const rental = await getDbRow(
-        `SELECT start_date, end_date 
+          [venue_id, user.user_id]
+        );
+        validateDateOverlap(start_date, end_date, rentals)
+      } else {
+        // Renter-specific validation: Check if the user has a valid rental
+        const rental = await getDbRow(
+          `SELECT start_date, end_date 
          FROM Venue_Rentals 
          WHERE venue_id = ? AND user_id = ? AND end_date >= ?`,
-        [venue_id, userId, new Date()]
-      );
+          [venue_id, user.user_id, new Date()]
+        );
 
-      if (!rental) {
-        throw new Error("Not authorized to create an event for this venue");
+        if (!rental) {
+          throw new Error("Not authorized to create an event for this venue");
+        }
+
+        // Check if the event dates are within the rental period
+        if (isBefore(start_date, new Date(rental.start_date)) || isAfter(end_date, new Date(rental.end_date))) {
+          throw new Error("Event dates must fall within your rental period");
+        }
       }
-
-      // Check if the event dates are within the rental period
-      if (isBefore(start, new Date(rental.start_date)) || isAfter(end, new Date(rental.end_date))) {
-        throw new Error("Event dates must fall within your rental period");
-      }
-
-      // Insert event for renters
-      await runDbQuery(
-        `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [venue_id, userId, name, description, start, end, invite_only ? 1 : 0]
-      );
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
     }
 
-    // Fetch the newly created event ID
-    const event = await getDbRow(`SELECT last_insert_rowid() AS event_id`);
+    try {
+      if (isOwner) {
+        // Insert event for owners
+        await runDbQuery(
+          `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [venue_id, user.user_id, name, description, start_date, end_date, invite_only ? 1 : 0]
+        );
+      } else {
 
-    res.status(201).json({ message: "Event created successfully", event_id: event.event_id });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+
+        // Insert event for renters
+        await runDbQuery(
+          `INSERT INTO Events (venue_id, organizer_id, name, description, start_date, end_date, invite_only) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [venue_id, user.user_id, name, description, start_date, end_date, invite_only ? 1 : 0]
+        );
+      }
+
+      // Fetch the newly created event ID
+      const event = await getDbRow(`SELECT last_insert_rowid() AS event_id`);
+
+      res.status(201).json({ message: "Event created successfully", event_id: event.event_id });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 
 // Update event information
-app.put('/api/events/:id', authenticateToken, async (req, res) => {
-  const { id } = req.params; // Event ID
+app.put(
+  '/api/events/:event_id',
+  authenticateToken,
+  validateInput({
+    name: { required: false, type: 'string' },
+    description: { required: false, type: 'string' },
+    start_date: { required: false, type: 'string' },
+    end_date: { required: false, type: 'string' },
+    invite_only: { required: false, type: 'boolean' },
+  }),
+  verifyEventAccessMiddleware, // Verify event access
+  async (req, res) => {
+  const { event_id } = req.params; // Event ID
   const { name, description, start_date, end_date, invite_only } = req.body; // Event data
-  const userId = req.user.user_id; // Authenticated user ID
+  const user_id = req.user.user_id; // Authenticated user ID
+
+  if (!req.isOrganizer) {
+    return res.status(403).json({ error: "You are not authorized to update this event" });
+  }
 
   try {
-    // Check if the user has access to the event
     const event = await getDbRow(
       `SELECT organizer_id, venue_id FROM Events WHERE event_id = ?`,
       [id]
@@ -1881,7 +1940,7 @@ app.post('/api/venue_rentals', authenticateToken, async (req, res) => {
     // Check for conflicts with events
     const events = await queryDb(`SELECT start_date, end_date FROM Events WHERE venue_id = ?`, [venue_id]);
 
-    if (checkDateOverlap(start, end, events)) {
+    if (validateDateOverlap(start, end, events)) {
       throw new Error("Cannot book venue due to a scheduled event conflict");
     }
 
