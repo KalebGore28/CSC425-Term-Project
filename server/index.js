@@ -690,6 +690,55 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+// Get event details by ID - ✅
+app.get(
+  '/api/events/:event_id',
+  checkEventExistsMiddleware, // Check if the event exists
+  async (req, res) => {
+    const event = req.event;
+
+    if (event.invite_only) {
+      // Need to get user_id from token
+      const token = req.cookies.accessToken;
+      const decoded = jwt.verify(token, secretKey);
+      const user_id = decoded.user_id;
+
+      // Check if user is not the organizer
+      if (event.organizer_id != user_id) {
+
+        // Check if user is invited to the event
+        const invitation = await getDbRow(
+          `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
+          [event.event_id, user_id]
+        );
+
+        if (!invitation) {
+          return res.status(403).json({ error: "You are not invited to this event" });
+        }
+      }
+    }
+
+    try {
+      // Fetch venue details to merge with event details. we need to get the venue name, location, and organizer name
+      const venueDetails = await getDbRow(
+        `SELECT
+          V.name AS venue_name,
+          V.location AS venue_location,
+          U.name AS organizer_name
+          FROM Venues V
+          JOIN Events E ON V.venue_id = E.venue_id
+          JOIN Users U ON E.organizer_id = U.user_id
+          WHERE E.event_id = ?`,
+        [event.event_id]
+      );
+
+      return res.json({ ...event, ...venueDetails });
+    } catch (error) {
+      return res.status(400).json({ error: error.message });
+    }
+  }
+);
+
 // Get all events where the user is the organizer - ✅
 app.get('/api/users/me/events', authenticateToken, async (req, res) => {
   const userId = req.user.user_id;
@@ -764,51 +813,6 @@ app.get('/api/users/me/accepted-events', authenticateToken, async (req, res) => 
     return res.status(500).json({ error: "Error retrieving accepted events" });
   }
 });
-
-// Get event details by ID - ✅
-app.get(
-  '/api/events/:event_id',
-  checkEventExistsMiddleware, // Check if the event exists
-  async (req, res) => {
-    const event = req.event;
-
-    if (event.invite_only) {
-      // Need to get user_id from token
-      const token = req.cookies.accessToken;
-      const decoded = jwt.verify(token, secretKey);
-      const user_id = decoded.user_id;
-
-      // Check if user is invited to the event
-      const invitation = await getDbRow(
-        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
-        [event.event_id, user_id]
-      );
-
-      if (!invitation) {
-        return res.status(403).json({ error: "You are not invited to this event" });
-      }
-    }
-
-    try {
-      // Fetch venue details to merge with event details. we need to get the venue name, location, and organizer name
-      const venueDetails = await getDbRow(
-        `SELECT
-          V.name AS venue_name,
-          V.location AS venue_location,
-          U.name AS organizer_name
-          FROM Venues V
-          JOIN Events E ON V.venue_id = E.venue_id
-          JOIN Users U ON E.organizer_id = U.user_id
-          WHERE E.event_id = ?`,
-        [event.event_id]
-      );
-
-      return res.json({ ...event, ...venueDetails });
-    } catch (error) {
-      return res.status(400).json({ error: error.message });
-    }
-  }
-);
 
 // Get all attendees for an event - ✅
 app.get(
