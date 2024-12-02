@@ -5223,30 +5223,6 @@
 					]
 				}
 			]
-		},
-		{
-			"name": "Notifications",
-			"item": [
-				{
-					"name": "New Request",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"url": {
-							"raw": "{{base_url}}/api/notifications/readall",
-							"host": [
-								"{{base_url}}"
-							],
-							"path": [
-								"api",
-								"notifications",
-								"readall"
-							]
-						}
-					},
-					"response": []
-				}
-			]
 		}
 	],
 	"event": [
