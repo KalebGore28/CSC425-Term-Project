@@ -360,13 +360,18 @@ app.post('/api/posts', authenticateToken, async (req, res) => {
   const { event_id, content } = req.body;
 
   try {
-    // Check user invitation status for the event
-    const invitation = await getDbRow(
-      `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
-      [event_id, user_id]
-    );
-    if (!invitation) {
-      throw new Error("You do not have permission to post in this event's community");
+    // Check if the user is the organizer
+    const isOrganizer = await getDbRow(`SELECT 1 FROM Events WHERE event_id = ? AND organizer_id = ?`, [event_id, user_id]);
+    if (!isOrganizer) {
+      // Check user invitation status for the event
+      const invitation = await getDbRow(
+        `SELECT * FROM Invitations WHERE event_id = ? AND user_id = ? AND status = 'Accepted'`,
+        [event_id, user_id]
+      );
+
+      if (!invitation) {
+        throw new Error("You do not have permission to post in this event's community");
+      }
     }
 
     // Insert community post

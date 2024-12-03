@@ -21,6 +21,7 @@ function EventView() {
 	const [inviteEmail, setInviteEmail] = useState('');
 	const [inviteStatus, setInviteStatus] = useState(null); // null, 'success', 'error'
 	const [inviteMessage, setInviteMessage] = useState('');
+	const [newPostContent, setNewPostContent] = useState(""); // New post content
 
 	// Fetch current user info
 	useEffect(() => {
@@ -99,6 +100,49 @@ function EventView() {
 
 	// Handle tab switching
 	const handleTabClick = (tab) => setActiveTab(tab);
+
+	// Handle new post creation
+	const handleCreatePost = async () => {
+		if (!newPostContent.trim()) {
+			alert("Post content cannot be empty.");
+			return;
+		}
+
+		try {
+			const response = await fetch(`http://localhost:5001/api/posts`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({ event_id, content: newPostContent }),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.error || "Failed to create post.");
+			}
+
+			const postData = await response.json();
+
+			// Add the new post to the communityPosts state
+			setCommunityPosts((prevPosts) => [
+				{
+					post_id: postData.post_id,
+					user_id: currentUserId,
+					user_name: "You", // Update with the current user's name if available
+					content: newPostContent,
+					created_at: new Date().toISOString(),
+					like_count: 0,
+					likedByCurrentUser: false,
+				},
+				...prevPosts,
+			]);
+
+			setNewPostContent(""); // Clear input field
+			alert("Post created successfully.");
+		} catch (err) {
+			alert(err.message);
+		}
+	};
 
 	// Handle invite form submission
 	const handleInvite = async () => {
@@ -427,6 +471,21 @@ function EventView() {
 				{activeTab === "posts" && (
 					<div className="tab-content">
 						<h2>Community Posts</h2>
+
+						{/* New Post Form */}
+						<div className="new-post-form">
+							<textarea
+								value={newPostContent}
+								onChange={(e) => setNewPostContent(e.target.value)}
+								placeholder="Write a new post..."
+								className="new-post-textarea"
+							/>
+							<button className="new-post-button" onClick={handleCreatePost}>
+								Create Post
+							</button>
+						</div>
+
+						{/* Community Posts */}
 						{communityPosts.length > 0 ? (
 							<ul className="timeline">
 								{communityPosts.map((post) => (

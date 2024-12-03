@@ -369,27 +369,28 @@ textarea {
 }
 
 .reply-buttons {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end; /* Align buttons to the right */
+	display: flex;
+	gap: 10px;
+	justify-content: flex-end;
+	/* Align buttons to the right */
 }
 
 button[type="submit"] {
-    background-color: #007bff;
-    color: white;
+	background-color: #007bff;
+	color: white;
 }
 
 button[type="submit"]:hover {
-    background-color: #0056b3;
+	background-color: #0056b3;
 }
 
 button[type="button"] {
-    background-color: #ccc;
-    color: black;
+	background-color: #ccc;
+	color: black;
 }
 
 button[type="button"]:hover {
-    background-color: #999;
+	background-color: #999;
 }
 
 .reply-form button:hover {
@@ -442,4 +443,42 @@ button[type="button"]:hover {
 	color: red;
 	display: block;
 	margin-left: 10px;
+}
+
+.new-post-form {
+	margin-bottom: 20px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	max-width: 625px;
+}
+
+.new-post-textarea {
+	height: 80px;
+	padding: 10px;
+	font-size: 14px;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	resize: none;
+}
+
+.new-post-textarea:focus {
+	border-color: #007bff;
+	outline: none;
+	box-shadow: 0 0 5px rgba(0, 123, 255, 0.5);
+}
+
+.new-post-button {
+	align-self: flex-start;
+	padding: 8px 15px;
+	font-size: 14px;
+	background-color: #007bff;
+	color: white;
+	border: none;
+	border-radius: 5px;
+	cursor: pointer;
+}
+
+.new-post-button:hover {
+	background-color: #0056b3;
 }
