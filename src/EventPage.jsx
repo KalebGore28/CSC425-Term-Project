@@ -63,7 +63,6 @@ const EventPage = () => {
       <section className="event-list">
         {filteredEvents.length > 0 ? (
           filteredEvents.map(event => (
-            console.log(event.event_id),
             <div key={event.event_id} className="event-item">
               <Link to={`/events/${event.event_id}`}>
                 <h2>{event.event_name}</h2>

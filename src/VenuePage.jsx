@@ -45,7 +45,6 @@ function VenuePage() {
 										className="venue-image"
 										onError={(e) => {
 											e.target.onerror = null;
-											e.target.src = '/fallback-image.webp'; // Optional fallback image
 										}}
 									/>
 									<h2 className="venue-name">{venue.name}</h2>
