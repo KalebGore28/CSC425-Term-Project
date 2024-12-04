@@ -5,8 +5,16 @@ import EventPage from "./EventPage";
 
 describe("EventPage", () => {
   beforeEach(() => {
-    // Mock the global fetch function
+    // Mock global fetch
     global.fetch = jest.fn();
+
+    // Suppress specific console.error messages
+    jest.spyOn(console, "error").mockImplementation((message, ...args) => {
+      if (message.includes("Failed to fetch events")) {
+        return; // Suppress this specific error
+      }
+      console.error(message, ...args); // Let other errors pass through
+    });
   });
 
   afterEach(() => {
@@ -163,8 +171,8 @@ describe("EventPage", () => {
 });
 
 jest.spyOn(console, "warn").mockImplementation((message) => {
-    if (message.includes("React Router Future Flag Warning")) {
-        return; // Suppress specific warnings
-    }
-    console.warn(message); // Let other warnings pass through
+  if (message.includes("React Router Future Flag Warning")) {
+    return; // Suppress specific warnings
+  }
+  console.warn(message); // Let other warnings pass through
 });

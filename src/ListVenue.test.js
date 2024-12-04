@@ -90,8 +90,6 @@ describe("ListVenue", () => {
 			expect(mockToggleAuthModal).toHaveBeenCalledTimes(1);
 		});
 	
-		// Optional Debugging: Log the mock calls
-		console.log("Mock toggleAuthModal calls:", mockToggleAuthModal.mock.calls);
 	});
 
 	test("submits form and displays success message", async () => {
