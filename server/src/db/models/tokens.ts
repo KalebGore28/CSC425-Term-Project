@@ -7,7 +7,7 @@ import { users } from "./users";
 
 export const tokens = sqliteTable("Tokens", {
 	token_id: int("token_id").primaryKey({ autoIncrement: true }),
-	user_id: int("user_id").notNull(),
+	user_id: int("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
 	token: text("token").notNull().unique(),
 	created_at: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });

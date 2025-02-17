@@ -5,11 +5,14 @@ import { sql, relations } from "drizzle-orm";
 // Import related tables so we can reference their primary key columns.
 import { venues } from "./venues";
 import { users } from "./users";
+import { notifications } from "./notifications";
+import { invitations } from "./invitations";
+import { posts } from "./posts";
 
 export const events = sqliteTable("Events", {
 	event_id: int("event_id").primaryKey({ autoIncrement: true }),
-	venue_id: int("venue_id").notNull(),
-	organizer_id: int("organizer_id").notNull(),
+	venue_id: int("venue_id").notNull().references(() => venues.venue_id, { onDelete: "cascade" }),
+	organizer_id: int("organizer_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
 	name: text("name").notNull(),
 	description: text("description"),
 	start_date: text("start_date").notNull(),
@@ -18,8 +21,8 @@ export const events = sqliteTable("Events", {
 	created_at: text("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
-// Define relationships separately so that the DBML generator can detect the references.
-export const eventsRelations = relations(events, ({ one }) => ({
+// Define relationships for Events table.
+export const eventsOne = relations(events, ({ one }) => ({
 	venue: one(venues, {
 		fields: [events.venue_id],
 		references: [venues.venue_id],
@@ -28,4 +31,10 @@ export const eventsRelations = relations(events, ({ one }) => ({
 		fields: [events.organizer_id],
 		references: [users.user_id],
 	}),
+}));
+
+export const eventsMany = relations(events, ({ many }) => ({
+	notifications: many(notifications),
+	invitations: many(invitations),
+	posts: many(posts),
 }));

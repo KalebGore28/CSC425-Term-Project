@@ -9,13 +9,11 @@ import { posts } from "./posts";
 import { users } from "./users";
 
 // Define the Post_Likes table
-export const postLikes = sqliteTable(
-	"Post_Likes",
-	{
-		like_id: int("like_id").primaryKey({ autoIncrement: true }),
-		post_id: int("post_id").notNull(),
-		user_id: int("user_id").notNull(),
-	},
+export const postLikes = sqliteTable("Post_Likes", {
+	like_id: int("like_id").primaryKey({ autoIncrement: true }),
+	post_id: int("post_id").notNull().references(() => posts.post_id),
+	user_id: int("user_id").notNull().references(() => users.user_id),
+},
 	(table) => ([
 		// Composite unique constraint on post_id and user_id
 		uniqueIndex("unique_post_user").on(table.post_id, table.user_id)

@@ -9,13 +9,13 @@ import { venues } from "./venues";
 // Define the Venue_Rentals table without inline .references() calls.
 export const venueRentals = sqliteTable("Venue_Rentals", {
   rental_id: int("rental_id").primaryKey({ autoIncrement: true }),
-  user_id: int("user_id").notNull(),
-  venue_id: int("venue_id").notNull(),
+  user_id: int("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
+  venue_id: int("venue_id").notNull().references(() => venues.venue_id, { onDelete: "cascade" }),
   start_date: text("start_date").notNull(),
   end_date: text("end_date").notNull(),
 });
 
-// Define the relationships for Venue_Rentals so that the DBML generator can properly generate references.
+// Define the relationships for Venue_Rentals table.
 export const venueRentalsRelations = relations(venueRentals, ({ one }) => ({
   user: one(users, {
     fields: [venueRentals.user_id],

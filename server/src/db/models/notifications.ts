@@ -8,8 +8,8 @@ import { events } from "./events";
 
 export const notifications = sqliteTable("Notifications", {
 	notification_id: int("notification_id").primaryKey({ autoIncrement: true }),
-	user_id: int("user_id").notNull(),
-	event_id: int("event_id"),
+	user_id: int("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
+	event_id: int("event_id").references(() => events.event_id, { onDelete: "cascade" }),
 	message: text("message").notNull(),
 	// CHECK constraint is omitted; enforce valid values ('Unread', 'Read') at the application level.
 	status: text("status").default("Unread"),
