@@ -4,4 +4,3 @@ coverage
 .env
 .DS_Store
 dev.sqlite3
-server/.env
