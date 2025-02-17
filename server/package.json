@@ -1,24 +1,28 @@
 {
-  "name": "server",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "axios": "^1.7.7",
-    "bcrypt": "^5.1.1",
-    "cors": "^2.8.5",
-    "date-fns": "^4.1.0",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "sqlite3": "^5.1.7",
-    "uuid": "^11.0.3"
-  }
+	"name": "venueflow",
+	"module": "index.ts",
+	"type": "module",
+	"scripts": {
+		"dev": "bunx nodemon --exec bun run src/index.ts",
+		"dbml": "bun src/db/dbml.ts",
+		"reset-db": "rm -f ./src/db/dev.sqlite3 && npx drizzle-kit migrate"
+	},
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"dependencies": {
+		"@elysiajs/swagger": "^1.2.0",
+		"@libsql/client": "^0.14.0",
+		"cookie-parser": "^1.4.7",
+		"dotenv": "^16.4.7",
+		"drizzle-dbml-generator": "^0.10.0",
+		"drizzle-kit": "^0.30.4",
+		"drizzle-orm": "^0.39.3",
+		"elysia": "^1.2.13",
+		"jsonwebtoken": "^9.0.2",
+		"vitest": "^3.0.5"
+	}
 }
