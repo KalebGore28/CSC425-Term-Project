@@ -8,24 +8,27 @@
 		"reset-db": "rm -f ./src/db/dev.sqlite3 && npx drizzle-kit migrate"
 	},
 	"devDependencies": {
-		"@types/bun": "latest"
+		"@types/bun": "latest",
+		"@types/passport-google-oauth20": "^2.0.16"
 	},
 	"peerDependencies": {
 		"typescript": "^5.0.0"
 	},
 	"dependencies": {
-		"@builder.io/qwik-city": "^1.12.0",
-		"@elysiajs/server-timing": "^1.2.1",
+		"@elysiajs/cookie": "^0.8.0",
+		"@elysiajs/jwt": "^1.2.0",
 		"@elysiajs/static": "^1.2.0",
 		"@elysiajs/swagger": "^1.2.0",
 		"@libsql/client": "^0.14.0",
-		"cookie-parser": "^1.4.7",
+		"arctic": "^3.3.0",
 		"dotenv": "^16.4.7",
 		"drizzle-dbml-generator": "^0.10.0",
 		"drizzle-kit": "^0.30.4",
 		"drizzle-orm": "^0.39.3",
 		"elysia": "^1.2.13",
-		"jsonwebtoken": "^9.0.2",
+		"elysia-oauth2": "^2.0.0",
+		"passport": "^0.7.0",
+		"passport-google-oauth20": "^2.0.0",
 		"vitest": "^3.0.5"
 	}
 }
