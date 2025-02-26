@@ -12,23 +12,23 @@
 		"@types/passport-google-oauth20": "^2.0.16"
 	},
 	"peerDependencies": {
-		"typescript": "^5.0.0"
+		"typescript": "^5.7.3"
 	},
 	"dependencies": {
 		"@elysiajs/cookie": "^0.8.0",
 		"@elysiajs/jwt": "^1.2.0",
 		"@elysiajs/static": "^1.2.0",
-		"@elysiajs/swagger": "^1.2.0",
+		"@elysiajs/swagger": "^1.2.2",
 		"@libsql/client": "^0.14.0",
-		"arctic": "^3.3.0",
+		"arctic": "^3.4.0",
 		"dotenv": "^16.4.7",
 		"drizzle-dbml-generator": "^0.10.0",
-		"drizzle-kit": "^0.30.4",
+		"drizzle-kit": "^0.30.5",
 		"drizzle-orm": "^0.39.3",
-		"elysia": "^1.2.13",
+		"elysia": "^1.2.22",
 		"elysia-oauth2": "^2.0.0",
 		"passport": "^0.7.0",
 		"passport-google-oauth20": "^2.0.0",
-		"vitest": "^3.0.5"
+		"vitest": "^3.0.7"
 	}
 }

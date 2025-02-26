@@ -1,11 +1,15 @@
 table Available_Dates {
-  availability_id integer [pk, not null]
+  id integer [pk, not null]
   venue_id integer [not null]
   available_date text [not null]
+
+  indexes {
+    (venue_id, available_date) [name: 'unique_date', unique]
+  }
 }
 
 table Events {
-  event_id integer [pk, not null]
+  id integer [pk, not null]
   venue_id integer [not null]
   organizer_id integer [not null]
   name text [not null]
@@ -17,14 +21,20 @@ table Events {
 }
 
 table Images {
-  image_id integer [pk, not null]
-  venue_id integer [not null]
+  id integer [pk, not null]
+  event_id integer
+  venue_id integer
+  thumbnail integer [default: false]
   image_url text [not null]
   created_at text [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (venue_id, thumbnail) [name: 'unique_thumbnail', unique]
+  }
 }
 
 table Invitations {
-  invitation_id integer [pk, not null]
+  id integer [pk, not null]
   event_id integer [not null]
   user_id integer [not null]
   sent_date text [default: `CURRENT_TIMESTAMP`]
@@ -32,7 +42,7 @@ table Invitations {
 }
 
 table Notifications {
-  notification_id integer [pk, not null]
+  id integer [pk, not null]
   user_id integer [not null]
   event_id integer
   message text [not null]
@@ -41,17 +51,17 @@ table Notifications {
 }
 
 table Post_Likes {
-  like_id integer [pk, not null]
+  id integer [pk, not null]
   post_id integer [not null]
   user_id integer [not null]
 
   indexes {
-    (post_id, user_id) [name: 'unique_post_user', unique]
+    (post_id, user_id) [name: 'unique_user_like', unique]
   }
 }
 
 table Posts {
-  post_id integer [pk, not null]
+  id integer [pk, not null]
   event_id integer [not null]
   user_id integer [not null]
   content text [not null]
@@ -61,22 +71,22 @@ table Posts {
 }
 
 table Tokens {
-  token_id integer [pk, not null]
+  id integer [pk, not null]
   user_id integer [not null]
   token text [not null, unique]
   created_at text [default: `CURRENT_TIMESTAMP`]
 }
 
 table Users {
-  user_id integer [pk, not null]
+  id integer [pk, not null]
   name text [not null]
   email text [not null, unique]
-  password text [not null]
+  last_login text [not null, default: `CURRENT_TIMESTAMP`]
   created_at text [default: `CURRENT_TIMESTAMP`]
 }
 
 table Venue_Rentals {
-  rental_id integer [pk, not null]
+  id integer [pk, not null]
   user_id integer [not null]
   venue_id integer [not null]
   start_date text [not null]
@@ -84,47 +94,48 @@ table Venue_Rentals {
 }
 
 table Venues {
-  venue_id integer [pk, not null]
+  id integer [pk, not null]
   owner_id integer [not null]
   name text [not null]
   location text [not null]
   description text
   capacity integer
   price real
-  thumbnail_image_id integer
   created_at text [default: `CURRENT_TIMESTAMP`]
 }
 
-ref: Available_Dates.venue_id > Venues.venue_id
+ref: Available_Dates.venue_id > Venues.id
 
-ref: Events.venue_id > Venues.venue_id
+ref: Events.venue_id > Venues.id
 
-ref: Events.organizer_id > Users.user_id
+ref: Events.organizer_id > Users.id
 
-ref: Venues.thumbnail_image_id > Images.image_id
+ref: Images.event_id > Events.id
 
-ref: Invitations.event_id > Events.event_id
+ref: Images.venue_id > Venues.id
 
-ref: Invitations.user_id > Users.user_id
+ref: Invitations.event_id > Events.id
 
-ref: Notifications.user_id > Users.user_id
+ref: Invitations.user_id > Users.id
 
-ref: Notifications.event_id > Events.event_id
+ref: Notifications.event_id > Events.id
 
-ref: Post_Likes.post_id > Posts.post_id
+ref: Notifications.user_id > Users.id
 
-ref: Post_Likes.user_id > Users.user_id
+ref: Post_Likes.post_id > Posts.id
 
-ref: Posts.event_id > Events.event_id
+ref: Post_Likes.user_id > Users.id
 
-ref: Posts.user_id > Users.user_id
+ref: Posts.event_id > Events.id
 
-ref: Posts.parent_post_id - Posts.post_id
+ref: Posts.user_id > Users.id
 
-ref: Tokens.user_id - Users.user_id
+ref: Posts.parent_post_id - Posts.id
 
-ref: Venue_Rentals.user_id > Users.user_id
+ref: Tokens.user_id > Users.id
 
-ref: Venue_Rentals.venue_id > Venues.venue_id
+ref: Venues.owner_id > Users.id
 
-ref: Venues.owner_id > Users.user_id
+ref: Venue_Rentals.user_id > Users.id
+
+ref: Venue_Rentals.venue_id > Venues.id

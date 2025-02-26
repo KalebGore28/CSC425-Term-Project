@@ -8,4 +8,6 @@ export default defineConfig({
   dbCredentials: {
     url: config.db.url!,
   },
+  verbose: true,
+  strict: true,
 });

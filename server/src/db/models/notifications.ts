@@ -1,28 +1,27 @@
-// src/db/models/notifications.ts
-import { sqliteTable, int, text } from "drizzle-orm/sqlite-core";
+import { sqliteTable, int, text, check } from "drizzle-orm/sqlite-core";
 import { sql, relations } from "drizzle-orm";
 
-// Import related tables to reference in relationships.
-import { users } from "./users";
 import { events } from "./events";
+import { users } from "./users";
 
 export const notifications = sqliteTable("Notifications", {
-	notification_id: int("notification_id").primaryKey({ autoIncrement: true }),
-	user_id: int("user_id").notNull().references(() => users.user_id, { onDelete: "cascade" }),
-	event_id: int("event_id").references(() => events.event_id, { onDelete: "cascade" }),
+	id: int("id").primaryKey({ autoIncrement: true }),
+	user_id: int("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+	event_id: int("event_id").references(() => events.id, { onDelete: "cascade" }),
 	message: text("message").notNull(),
-	// CHECK constraint is omitted; enforce valid values ('Unread', 'Read') at the application level.
 	status: text("status").default("Unread"),
 	created_at: text("created_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+	check("valid_status", sql`${table.status} IN ('Read', 'Unread')`),
+]);
 
 export const notificationsRelations = relations(notifications, ({ one }) => ({
-	user: one(users, {
-		fields: [notifications.user_id],
-		references: [users.user_id],
-	}),
 	event: one(events, {
 		fields: [notifications.event_id],
-		references: [events.event_id],
+		references: [events.id],
+	}),
+	user: one(users, {
+		fields: [notifications.user_id],
+		references: [users.id],
 	}),
 }));

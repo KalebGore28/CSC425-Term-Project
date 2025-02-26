@@ -85,5 +85,3 @@ export const oAuthRoute = new Elysia()
 
     return `Hello ${profile.name}, welcome back!`;
   })
-
-console.log("Server is running on http://localhost:3000");
