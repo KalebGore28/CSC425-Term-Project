@@ -9,6 +9,7 @@
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
+		"@types/better-sqlite3": "^7.6.12",
 		"@types/passport-google-oauth20": "^2.0.16"
 	},
 	"peerDependencies": {
@@ -19,13 +20,13 @@
 		"@elysiajs/jwt": "^1.2.0",
 		"@elysiajs/static": "^1.2.0",
 		"@elysiajs/swagger": "^1.2.2",
-		"@libsql/client": "^0.14.0",
 		"arctic": "^3.4.0",
+		"better-sqlite3": "^11.8.1",
 		"dotenv": "^16.4.7",
 		"drizzle-dbml-generator": "^0.10.0",
 		"drizzle-kit": "^0.30.5",
 		"drizzle-orm": "^0.39.3",
-		"elysia": "^1.2.22",
+		"elysia": "^1.2.23",
 		"elysia-oauth2": "^2.0.0",
 		"passport": "^0.7.0",
 		"passport-google-oauth20": "^2.0.0",
