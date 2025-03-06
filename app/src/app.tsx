@@ -1,19 +1,20 @@
-import { component$ } from '@builder.io/qwik';
-
-import './app.css';
+import './App.css';
 import { Button } from '@/components/ui/button';
 
-export const App = component$(() => {
-
+function App() {
 	return (
 		<>
-			<h1>Vite + Qwik</h1>
-			<div class="card">
-				<div class="flex flex-col items-center justify-center min-h-svh">
-					<Button>Click me</Button>
-				</div>
+			<h1>Vite + React + TS</h1>
+			<div className="card">
+				<Button variant="default">Button</Button>
+
+				<p>
+					Edit <code>src/App.tsx</code> and save to test HMR
+				</p>
 			</div>
-			<p class="read-the-docs">Click on the Vite and Qwik logos to learn more</p>
+			<p className="read-the-docs">Click on the Vite and React logos to learn more</p>
 		</>
 	);
-});
+}
+
+export default App;
